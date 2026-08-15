@@ -51,9 +51,9 @@ def test_notebook_has_kernel_info(nb_path: Path) -> None:
     """Every notebook must declare its kernel so CI can reproduce it."""
     data = json.loads(nb_path.read_text(encoding="utf-8"))
     # Accept kernelspec.language OR language_info.name (VS Code sometimes strips kernelspec)
-    lang = data.get("metadata", {}).get("kernelspec", {}).get("language", "") or data.get(
-        "metadata", {}
-    ).get("language_info", {}).get("name", "")
+    lang = data.get("metadata", {}).get("kernelspec", {}).get(
+        "language", ""
+    ) or data.get("metadata", {}).get("language_info", {}).get("name", "")
     assert lang, f"{nb_path.name}: no kernel language in metadata"
 
 
