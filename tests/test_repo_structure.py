@@ -110,9 +110,9 @@ def _html_books() -> list[Path]:
 def test_html_book_links_css(html_path: Path) -> None:
     """Every book HTML must link to devops-path.css."""
     content = html_path.read_text(encoding="utf-8")
-    assert (
-        'href="devops-path.css"' in content
-    ), f"{html_path.name}: missing <link rel='stylesheet' href='devops-path.css'>"
+    assert 'href="devops-path.css"' in content, (
+        f"{html_path.name}: missing <link rel='stylesheet' href='devops-path.css'>"
+    )
 
 
 @pytest.mark.parametrize("html_path", _html_books(), ids=lambda p: p.name)
@@ -126,9 +126,9 @@ def test_html_book_has_cover(html_path: Path) -> None:
 def test_html_book_has_mental_model_boxes(html_path: Path) -> None:
     """Every book must have at least one 'analogy' mental model box."""
     content = html_path.read_text(encoding="utf-8")
-    assert (
-        'class="box analogy"' in content
-    ), f"{html_path.name}: missing mental model (box analogy) — every book must have one"
+    assert 'class="box analogy"' in content, (
+        f"{html_path.name}: missing mental model (box analogy) — every book must have one"
+    )
 
 
 # ── CODEOWNERS check ─────────────────────────────────────────────────────

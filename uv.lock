@@ -173,7 +173,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5.7" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.16.3" },
     { name = "yamllint", marker = "extra == 'dev'", specifier = ">=1.35" },
 ]
 provides-extras = ["dev"]
@@ -185,7 +185,7 @@ dev = [
     { name = "pytest", specifier = ">=7.4" },
     { name = "pytest-cov", specifier = ">=4.1" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "ruff", specifier = ">=0.5.7" },
+    { name = "ruff", specifier = "==0.16.3" },
     { name = "yamllint", specifier = ">=1.35" },
 ]
 
