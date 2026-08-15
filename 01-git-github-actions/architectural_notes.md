@@ -16,8 +16,8 @@ gives you:
 - **Distributed by default** — every clone is a complete backup
 - **Cheap branches** — a branch is just a pointer (40 bytes) to a commit SHA
 
-The implication for architecture: **Git is not a deployment tool, it is a source of truth**. 
-Triggering deployments from git events (push, PR merge) is the correct mental model — 
+The implication for architecture: **Git is not a deployment tool, it is a source of truth**.
+Triggering deployments from git events (push, PR merge) is the correct mental model —
 not SSH-ing into a server and pulling code directly.
 
 ---
@@ -108,7 +108,7 @@ Code → [lint] → [unit tests] → [build] → [integration tests] → [securi
 
 ### 3. Idempotent Pipelines
 Every pipeline run with the same inputs must produce the same outputs. Flaky tests,
-non-deterministic builds, and time-based checks violate this. 
+non-deterministic builds, and time-based checks violate this.
 
 **Tactics for idempotency:**
 - Pin all dependency versions (exact SHAs, not `latest`)

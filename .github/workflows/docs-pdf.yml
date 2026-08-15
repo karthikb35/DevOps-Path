@@ -2,13 +2,13 @@ name: DevOps Study-Guide PDFs
 
 # Builds one PDF per study-guide book from its HTML source, but only for books
 # that actually changed. Unchanged books are carried over from the previous
-# "devops-pdfs" rolling release â€” so a one-line edit to Book 3 does not
+# "devops-pdfs" rolling release — so a one-line edit to Book 3 does not
 # re-render the other six.
 #
 # Change detection:
-#   * that book's own HTML changed             â†’ rebuild it
-#   * shared CSS / renderer / this workflow    â†’ rebuild ALL books
-#   * otherwise                                â†’ reuse PDF from last release
+#   * that book's own HTML changed             → rebuild it
+#   * shared CSS / renderer / this workflow    → rebuild ALL books
+#   * otherwise                                → reuse PDF from last release
 #
 # The publish job then republishes the full set (fresh + carried-over) so
 # the rolling release always holds every current book.
@@ -35,9 +35,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  # ────────────────────────────────────────────────────────────────────────────
   # 1. Detect which books changed
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  # ────────────────────────────────────────────────────────────────────────────
   changes:
     name: Detect changed books
     runs-on: ubuntu-latest
@@ -74,9 +74,9 @@ jobs:
             master:
               - 'study-guide/The-DevOps-Path.html'
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-  # 2. One job per book â€” each decides build-vs-reuse independently
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2. One job per book — each decides build-vs-reuse independently
+  # ────────────────────────────────────────────────────────────────────────────
   pdf:
     name: ${{ matrix.pdf }}
     needs: changes
@@ -125,7 +125,7 @@ jobs:
         id: plan
         run: echo "mode=${{ env.REBUILD == 'true' && 'build' || 'reuse' }}" >> "$GITHUB_OUTPUT"
 
-      # â”€â”€ Reuse: pull existing PDF from the rolling release â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      # ── Reuse: pull existing PDF from the rolling release ────────────────────
       - name: Reuse PDF from previous release
         if: steps.plan.outputs.mode == 'reuse'
         id: reuse
@@ -138,11 +138,11 @@ jobs:
             echo "ok=true"  >> "$GITHUB_OUTPUT"
             echo "Reused ${{ matrix.pdf }} from release devops-pdfs."
           else
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "No prior asset for ${{ matrix.pdf }} â€” will build instead."
+            echo "ok=false"  >> "$GITHUB_OUTPUT"
+            echo "No prior asset for ${{ matrix.pdf }} — will build instead."
           fi
 
-      # â”€â”€ Build: render with headless Chromium â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+      # ── Build: render with headless Chromium ─────────────────────────────────
       - name: Set up Python
         if: steps.plan.outputs.mode == 'build' || steps.reuse.outputs.ok == 'false'
         uses: actions/setup-python@v5
@@ -166,7 +166,7 @@ jobs:
           python study-guide/render_pdf.py \
             "study-guide/${{ matrix.html }}" "out/${{ matrix.pdf }}"
 
-      # â”€â”€ Upload for the publish job â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      # ── Upload for the publish job ───────────────────────────────────────────
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
         with:
@@ -174,10 +174,10 @@ jobs:
           path: out/${{ matrix.pdf }}
           if-no-files-found: error
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  # ────────────────────────────────────────────────────────────────────────────
   # 3. Publish the full set to the rolling release (push to main only)
   #    PRs leave PDFs as run artifacts only.
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  # ────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish rolling release
     needs: pdf

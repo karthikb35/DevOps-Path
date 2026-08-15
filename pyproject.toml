@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 # Dev dependencies — installed with: uv sync --dev
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.5.7",
+    "ruff==0.16.3",
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "pyyaml>=6.0",
@@ -25,7 +25,7 @@ dev = [
 # Run:   uv run pytest tests/   to run tests inside the venv
 # Run:   uv run ruff check .    to lint inside the venv
 dev-dependencies = [
-    "ruff>=0.5.7",
+    "ruff==0.16.3",
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "pyyaml>=6.0",
