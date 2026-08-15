@@ -1,4 +1,4 @@
-﻿name: GitHub Pages â€” Study-Guide Site
+﻿name: GitHub Pages — Study-Guide Site
 
 # Builds the HTML study-guide books into a GitHub Pages site.
 # Each book is a self-contained page; the index page lists all books
@@ -11,8 +11,8 @@
 #   https://<owner>.github.io/<repo>/
 #
 # How to enable GitHub Pages:
-#   Repo â†’ Settings â†’ Pages â†’ Source: "GitHub Actions"
-#   (do NOT use "Deploy from a branch" â€” that's the legacy method)
+#   Repo → Settings → Pages → Source: "GitHub Actions"
+#   (do NOT use "Deploy from a branch" — that's the legacy method)
 
 on:
   push:
@@ -36,9 +36,9 @@ permissions:
   id-token: write    # needed for OIDC-based Pages token
 
 jobs:
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  # 1. BUILD â€” assemble the site into _site/
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. BUILD — assemble the site into _site/
+  # ─────────────────────────────────────────────────────────────────────────────
   build:
     name: Build Pages site
     runs-on: ubuntu-latest
@@ -64,9 +64,9 @@ jobs:
         with:
           path: _site
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  # 2. DEPLOY â€” publish to GitHub Pages (push to main only)
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. DEPLOY — publish to GitHub Pages (push to main only)
+  # ─────────────────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to GitHub Pages
     needs: build
@@ -83,4 +83,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         # Uses OIDC token from id-token: write permission above.
-        # No credentials stored anywhere â€” same OIDC pattern as AWS deploys.
+        # No credentials stored anywhere — same OIDC pattern as AWS deploys.
