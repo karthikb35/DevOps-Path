@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The DevOps Architect's Path — Master Overview</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+
+<!-- ═══════════ COVER ═══════════ -->
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Master Overview · Edition 2026</div>
+    <h1>The DevOps<br>Architect's Path</h1>
+    <div class="sub">The complete curriculum from <strong style="color:#8ff4ee">junior engineer</strong> to <strong style="color:#8ff4ee">senior DevOps architect</strong>. Seven books, seven tools, one coherent mental model — all of it connected.</div>
+    <div class="stackrow">🔀 Git · 🔧 Jenkins · 🐳 Docker · ☸️ K8s · 🤖 Ansible · 🏗️ Terraform · 📊 Observability</div>
+    <div class="badges">
+      <span class="badge">🔀 Book I — Git &amp; GitHub Actions</span>
+      <span class="badge">🔧 Book II — Jenkins</span>
+      <span class="badge">🐳 Book III — Docker</span>
+      <span class="badge">☸️ Book IV — Kubernetes</span>
+      <span class="badge">🤖 Book V — Ansible</span>
+      <span class="badge">🏗️ Book VI — Terraform</span>
+      <span class="badge">📊 Book VII — Monitoring &amp; Observability</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Every tool, every trade-off, every production scenario.</strong><br>Seven books · Seven deep dives · One architectural mindset</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<!-- ═══════════ TOC ═══════════ -->
+<section class="toc">
+  <h2>The Complete Curriculum</h2>
+  <div class="rule"></div>
+  <p class="small">This master overview connects the seven books into a single architectural narrative. Each book stands alone, but together they form a coherent stack: code enters through Git, is validated by a CI/CD pipeline (GitHub Actions or Jenkins), packaged into a container (Docker), orchestrated at scale (Kubernetes), with its underlying server configured (Ansible) and provisioned (Terraform), and made observable (monitoring). This is the full DevOps lifecycle.</p>
+  <ol>
+    <li><span class="n">I</span><div><div class="tt"><a href="book-1-git-github-actions.html">Git &amp; GitHub Actions</a></div><div class="dd">The source of truth and the pipeline — where all automation begins</div></div><span class="ic">🔀</span></li>
+    <li><span class="n">II</span><div><div class="tt"><a href="book-2-jenkins.html">Jenkins</a></div><div class="dd">Enterprise CI/CD — the regulated-industry choice and how to use it well</div></div><span class="ic">🔧</span></li>
+    <li><span class="n">III</span><div><div class="tt"><a href="book-3-docker.html">Docker</a></div><div class="dd">The deployment artifact — from kernel primitives to hardened production images</div></div><span class="ic">🐳</span></li>
+    <li><span class="n">IV</span><div><div class="tt"><a href="book-4-kubernetes.html">Kubernetes</a></div><div class="dd">Running containers at scale — the desired-state orchestration engine</div></div><span class="ic">☸️</span></li>
+    <li><span class="n">V</span><div><div class="tt"><a href="book-5-ansible.html">Ansible</a></div><div class="dd">Configuration management — idempotent, agentless, auditable</div></div><span class="ic">🤖</span></li>
+    <li><span class="n">VI</span><div><div class="tt"><a href="book-6-terraform.html">Terraform</a></div><div class="dd">Infrastructure as Code — version-controlled, reviewable, reproducible</div></div><span class="ic">🏗️</span></li>
+    <li><span class="n">VII</span><div><div class="tt"><a href="book-7-monitoring-observability.html">Monitoring &amp; Observability</a></div><div class="dd">Seeing why systems break — before users tell you</div></div><span class="ic">📊</span></li>
+    <li><span class="n">VIII</span><div><div class="tt"><a href="book-8-branch-protection-ci-checks.html">Branch Protection &amp; CI Checks</a></div><div class="dd">Required checks · CODEOWNERS · ruff · isort · protection tests · GitHub Pages</div></div><span class="ic">🛡️</span></li>
+  </ol>
+</section>
+
+<!-- ═══════════ MASTER CHAPTER ═══════════ -->
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">🗺️</div>
+    <div><div class="t">The Senior DevOps Architect's Mental Stack</div>
+    <div class="s">How the seven tools connect into one coherent system — and the 10 questions that define the architectural mindset</div></div>
+    <div class="ico">🏗️</div>
+  </div>
+
+  <p class="lead">A junior engineer asks "how do I deploy this container?" A senior DevOps architect asks "how do I design a system where any engineer can deploy a container safely, repeatedly, with full observability, in under 10 minutes, with automatic rollback if something goes wrong?" The difference is not more syntax knowledge — it is <strong>systems thinking</strong>: understanding how tools compose into a platform.</p>
+
+  <h2 class="sec" id="s1">The DevOps Lifecycle — How the Tools Connect</h2>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 280" role="img" aria-label="DevOps lifecycle connecting all 7 tools">
+      <defs>
+        <marker id="ma" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#334155"/>
+        </marker>
+      </defs>
+      <g font-family="Segoe UI,sans-serif">
+        <!-- Title band -->
+        <text x="430" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="#0c2340">The DevOps Lifecycle — Seven Tools, One Flow</text>
+
+        <!-- Phase labels -->
+        <text x="75" y="35" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">SOURCE CONTROL</text>
+        <text x="240" y="35" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">CI/CD PIPELINE</text>
+        <text x="430" y="35" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">ARTIFACT</text>
+        <text x="600" y="35" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">ORCHESTRATION</text>
+        <text x="760" y="35" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">OBSERVE</text>
+
+        <!-- Git -->
+        <rect x="10" y="45" width="130" height="70" rx="10" fill="#fef2f2" stroke="#f05133" stroke-width="2"/>
+        <text x="75" y="70" text-anchor="middle" font-size="20">🔀</text>
+        <text x="75" y="90" text-anchor="middle" font-size="10" font-weight="800" fill="#c41e3a">Git</text>
+        <text x="75" y="105" text-anchor="middle" font-size="8.5" fill="#7f1d1d">Source of truth</text>
+
+        <!-- GitHub Actions / Jenkins -->
+        <rect x="155" y="45" width="175" height="70" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+        <text x="242" y="70" text-anchor="middle" font-size="18">⚙️🔧</text>
+        <text x="242" y="90" text-anchor="middle" font-size="10" font-weight="800" fill="#c2410c">GH Actions / Jenkins</text>
+        <text x="242" y="105" text-anchor="middle" font-size="8.5" fill="#7c2d12">Quality gates · CI/CD</text>
+
+        <!-- Docker -->
+        <rect x="345" y="45" width="170" height="70" rx="10" fill="#eff6ff" stroke="#2496ed" stroke-width="2"/>
+        <text x="430" y="70" text-anchor="middle" font-size="20">🐳</text>
+        <text x="430" y="90" text-anchor="middle" font-size="10" font-weight="800" fill="#1e40af">Docker Image</text>
+        <text x="430" y="105" text-anchor="middle" font-size="8.5" fill="#1e3a8a">Artifact · Registry</text>
+
+        <!-- Kubernetes -->
+        <rect x="530" y="45" width="160" height="70" rx="10" fill="#f0f9ff" stroke="#326ce5" stroke-width="2"/>
+        <text x="610" y="70" text-anchor="middle" font-size="20">☸️</text>
+        <text x="610" y="90" text-anchor="middle" font-size="10" font-weight="800" fill="#1e3a8a">Kubernetes</text>
+        <text x="610" y="105" text-anchor="middle" font-size="8.5" fill="#1e40af">Runs containers</text>
+
+        <!-- Monitoring -->
+        <rect x="705" y="45" width="145" height="70" rx="10" fill="#fff7ed" stroke="#e6522c" stroke-width="2"/>
+        <text x="777" y="70" text-anchor="middle" font-size="20">📊</text>
+        <text x="777" y="90" text-anchor="middle" font-size="10" font-weight="800" fill="#9a3412">Prometheus/ELK</text>
+        <text x="777" y="105" text-anchor="middle" font-size="8.5" fill="#7c2d12">Metrics · Logs · Traces</text>
+
+        <!-- Flow arrows (top row) -->
+        <path d="M140,80 L153,80" stroke="#334155" stroke-width="2" marker-end="url(#ma)"/>
+        <path d="M330,80 L343,80" stroke="#334155" stroke-width="2" marker-end="url(#ma)"/>
+        <path d="M515,80 L528,80" stroke="#334155" stroke-width="2" marker-end="url(#ma)"/>
+        <path d="M690,80 L703,80" stroke="#334155" stroke-width="2" marker-end="url(#ma)"/>
+
+        <!-- Infrastructure layer (bottom) -->
+        <text x="430" y="145" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">INFRASTRUCTURE LAYER</text>
+
+        <!-- Ansible -->
+        <rect x="155" y="158" width="230" height="70" rx="10" fill="#fff5f5" stroke="#ee0000" stroke-width="2"/>
+        <text x="270" y="183" text-anchor="middle" font-size="20">🤖</text>
+        <text x="270" y="203" text-anchor="middle" font-size="10" font-weight="800" fill="#991b1b">Ansible</text>
+        <text x="270" y="217" text-anchor="middle" font-size="8.5" fill="#7f1d1d">Configures servers · OS state</text>
+
+        <!-- Terraform -->
+        <rect x="400" y="158" width="230" height="70" rx="10" fill="#faf5ff" stroke="#7b42bc" stroke-width="2"/>
+        <text x="515" y="183" text-anchor="middle" font-size="20">🏗️</text>
+        <text x="515" y="203" text-anchor="middle" font-size="10" font-weight="800" fill="#4a1d96">Terraform</text>
+        <text x="515" y="217" text-anchor="middle" font-size="8.5" fill="#3b0764">Provisions cloud resources</text>
+
+        <!-- Vertical connections -->
+        <path d="M610,115 L610,135 L515,155" stroke="#7b42bc" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#ma)"/>
+        <path d="M430,115 L430,135 L270,155" stroke="#ee0000" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#ma)"/>
+
+        <!-- Connection labels -->
+        <text x="555" y="143" font-size="8" fill="#7b42bc">creates EC2/EKS</text>
+        <text x="340" y="143" font-size="8" fill="#ee0000">configures nginx/app</text>
+
+        <!-- Observation feedback loop -->
+        <path d="M777,115 L777,245 L430,245" stroke="#e6522c" stroke-width="1.5" stroke-dasharray="6" marker-end="url(#ma)"/>
+        <text x="640" y="260" text-anchor="middle" font-size="9" fill="#9a3412">Feedback loop: metrics → alert → rollback / scale</text>
+
+        <!-- GitOps label -->
+        <rect x="10" y="230" width="130" height="36" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+        <text x="75" y="248" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">GitOps principle:</text>
+        <text x="75" y="261" text-anchor="middle" font-size="8" fill="#16a34a">everything in Git</text>
+      </g>
+    </svg>
+    <figcaption>Figure 0.1 — The complete DevOps lifecycle. Code enters through Git, is validated by a pipeline (GitHub Actions or Jenkins), packaged into a Docker image, deployed to Kubernetes (provisioned by Terraform, configured by Ansible), and made observable via Prometheus/ELK. The feedback loop from monitoring back to the pipeline closes the loop: bad deployments are detected and rolled back automatically.</figcaption>
+  </figure>
+
+  <h2 class="sec" id="s2">The Senior Architect's Decision Matrix</h2>
+
+  <p>For each infrastructure decision, a senior architect can articulate the tool, the reason, and the trade-off. The matrix below shows how each tool answers a specific question:</p>
+
+  <table>
+    <tr><th>Question</th><th>Tool</th><th>Why this tool</th></tr>
+    <tr><td>How does code reach production safely?</td><td>Git + GitHub Actions / Jenkins</td><td>Version control + automated quality gates</td></tr>
+    <tr><td>Where does the artifact live?</td><td>Docker + GHCR/ECR</td><td>Immutable, reproducible, versioned deployment unit</td></tr>
+    <tr><td>How do I run it reliably at scale?</td><td>Kubernetes</td><td>Desired-state, self-healing orchestration</td></tr>
+    <tr><td>How do I configure the OS and middleware?</td><td>Ansible</td><td>Idempotent, agentless configuration management</td></tr>
+    <tr><td>How do I provision cloud infrastructure?</td><td>Terraform</td><td>Declarative, versioned, reviewable IaC</td></tr>
+    <tr><td>How do I know when it breaks?</td><td>Prometheus + Grafana + ELK</td><td>Metrics, logs, traces — the three pillars</td></tr>
+    <tr><td>How do I respond to incidents?</td><td>SLO-driven alerting + runbooks</td><td>Alert only on SLO burn rate, not raw thresholds</td></tr>
+  </table>
+
+  <h2 class="sec" id="s3">The 10 Commandments of a DevOps Architect</h2>
+
+  <div class="box bigidea"><span class="ic">💡</span><div class="h">The principles that separate architects from operators</div>
+  <ol style="margin:6px 0 0; padding-left:20px;">
+    <li><strong>Everything is code.</strong> Infrastructure, config, pipelines, runbooks — if it isn't in Git, it doesn't exist.</li>
+    <li><strong>Automate the blast radius.</strong> If a human must remember a step, it will be forgotten. Automate every step between code and production.</li>
+    <li><strong>Design for failure.</strong> Every component will fail. Design so the system doesn't. Chaos Engineering proves it.</li>
+    <li><strong>Immutable over mutable.</strong> Rebuild containers and VMs rather than patching in place. Immutable infrastructure is reproducible infrastructure.</li>
+    <li><strong>Fast feedback loops.</strong> A 45-minute pipeline is a slow compiler — engineers stop fixing tests. Target &lt;10 minutes CI to production signal.</li>
+    <li><strong>Least privilege everywhere.</strong> The container, the pipeline, the service account, the IAM role. No credential should outlive the job that needs it.</li>
+    <li><strong>Observable from day one.</strong> Metrics, logs, and traces are not added later — they are the design. Instrument as you build.</li>
+    <li><strong>The deployment is not the end.</strong> Rollback, canary, and runbook are part of the feature. Define them before you deploy.</li>
+    <li><strong>Blast radius before blast-off.</strong> For every change: how bad can it get? Can you limit it? Can you recover automatically? If the answer to all three is "no", you're not ready to deploy.</li>
+    <li><strong>Document the why, not the what.</strong> Code and YAML show the what. Architecture notes show why. The why is what transfers between engineers.</li>
+  </ol></div>
+
+  <h2 class="sec" id="s4">The Learning Path — Recommended Sequence</h2>
+
+  <table>
+    <tr><th>Phase</th><th>Book</th><th>Core skill</th><th>Test yourself when…</th></tr>
+    <tr><td>1 — Foundations</td><td>Book I: Git &amp; GitHub Actions</td><td>Automated quality gates</td><td>You can design a parallel CI pipeline with OIDC auth and path filtering from scratch</td></tr>
+    <tr><td>2 — Enterprise CI</td><td>Book II: Jenkins</td><td>Shared Library pattern</td><td>You can explain when Jenkins wins over GitHub Actions and why</td></tr>
+    <tr><td>3 — Containers</td><td>Book III: Docker</td><td>Production-grade Dockerfiles</td><td>You can audit any Dockerfile and name every security issue</td></tr>
+    <tr><td>4 — Orchestration</td><td>Book IV: Kubernetes</td><td>Desired-state deployments</td><td>You can debug a CrashLoopBackOff in under 5 minutes</td></tr>
+    <tr><td>5 — Config Mgmt</td><td>Book V: Ansible</td><td>Idempotent role design</td><td>You can write a role that configures a service and verifies with Molecule</td></tr>
+    <tr><td>6 — IaC</td><td>Book VI: Terraform</td><td>Plan/Apply GitOps workflow</td><td>You can set up Atlantis and explain the blast-radius separation strategy</td></tr>
+    <tr><td>7 — Observability</td><td>Book VII: Monitoring</td><td>SLO-driven alerting</td><td>You can define an SLO, calculate the error budget, and write the burn-rate alert</td></tr>
+    <tr><td>8 — Integration</td><td>All books together</td><td>Full-stack architecture</td><td>You can design end-to-end deployment architecture for a 50-engineer org from a blank whiteboard</td></tr>
+  </table>
+
+  <h2 class="sec" id="s5">The Interview Gauntlet — 10 Senior-Level Questions</h2>
+
+  <div class="qa"><div class="q">1. Design a CI/CD pipeline for a Python microservice that deploys to Kubernetes. The team deploys 10+ times per day. What does the full pipeline look like?</div>
+  <p>Gate 1 (parallel, &lt;3min): lint + unit tests + SAST. Gate 2: Docker multi-stage build (BuildKit layer cache) + image scan (trivy). Gate 3: push to ECR, deploy to staging via Helm + smoke tests. Gate 4: canary deploy to prod (Argo Rollouts: 5% → 15min → 50% → 100%) with automated Prometheus metric gates. OIDC for all AWS auth. Concurrency groups to prevent deploy races. Reusable workflow shared across all 20 microservices.</p></div>
+
+  <div class="qa"><div class="q">2. A production deployment is causing a high error rate. Describe your response from the moment you get paged.</div>
+  <p>Acknowledge alert. Check dashboard: which service, what error rate, since when. Compare timing to deployment events — did a deploy just happen? If yes: rollback immediately (<code class="inl">kubectl rollout undo</code> or Argo Rollouts auto-rollback). If no: check logs for error pattern, find a trace_id, trace the request to find the bottleneck. Mitigate first (rollback, feature flag off, circuit breaker). Root cause during business hours. Post-mortem within 48 hours.</p></div>
+
+  <div class="qa"><div class="q">3. A Terraform apply destroyed a production RDS database. What should have prevented this?</div>
+  <p>Three prevention layers: (1) <code class="inl">prevent_destroy = true</code> lifecycle rule on the RDS resource — Terraform refuses to destroy it and fails the plan. (2) Atlantis workflow — the plan showing a database destruction would have been visible in the PR for review. (3) AWS Service Control Policy preventing database deletion from the Terraform role. Recovery: restore from automated RDS snapshot. Post-mortem: add all three layers.</p></div>
+
+  <div class="qa"><div class="q">4. How do you handle secrets in a GitHub Actions pipeline that needs to push to ECR?</div>
+  <p>OIDC. Configure GitHub as a trusted OIDC identity provider in AWS IAM. Create an IAM role with ECR push permissions and a trust policy restricting to your GitHub repo/branch. In the workflow: <code class="inl">permissions: id-token: write</code> + <code class="inl">aws-actions/configure-aws-credentials</code> with the role ARN. No AWS keys stored anywhere. Credentials expire when the job ends.</p></div>
+
+  <div class="qa"><div class="q">5. What is the difference between Ansible and Terraform? Give a concrete example of where each is used.</div>
+  <p>Terraform provisions cloud infrastructure via APIs (creates EC2 instances, VPCs, RDS databases, load balancers). Ansible configures what runs inside that infrastructure via SSH (installs nginx, copies config templates, creates OS users, runs database migrations). Canonical workflow: Terraform creates the EC2 instance, outputs its IP, Ansible connects and configures it. They are complementary. Don't use Terraform for OS-level config; don't use Ansible to create VPCs.</p></div>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Master Overview Takeaways</div>
+  <ul class="tick">
+    <li>DevOps is a system: Git → Pipeline → Docker → Kubernetes, with Ansible/Terraform below and Monitoring above</li>
+    <li>The difference between junior and senior is systems thinking: understanding how each tool affects every other tool</li>
+    <li>Every decision has a trade-off. Name it. That is what separates architects from operators.</li>
+    <li>The 10 Commandments are the principles; the seven books are the implementation</li>
+    <li>Study one book per week. Run the code. Break it intentionally. Answer the interview questions from memory.</li>
+  </ul></div>
+
+</section>
+</body>
+</html>

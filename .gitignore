@@ -1,0 +1,59 @@
+# DevOps Repo — Git Ignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+.env
+*.env
+
+# Secrets — NEVER commit these
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.vault_pass.txt
+vault_password
+*_credentials.json
+*_secret.json
+
+# Terraform state — contains resource IDs and sometimes secrets
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl  # ← EXCEPTION: DO commit this (provider version lock)
+tfplan
+
+# Ansible
+*.retry
+
+# Docker
+.dockerignore  # keep this out for clarity
+
+# Kubernetes secrets manifests
+*-secret.yaml  # ← never commit K8s secrets; use External Secrets Operator
+
+# IDE
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Test output
+.coverage
+htmlcov/
+.pytest_cache/
+reports/

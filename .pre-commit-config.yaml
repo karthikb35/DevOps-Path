@@ -1,0 +1,59 @@
+# Pre-commit hooks managed and run via uv.
+# Install: uv tool install pre-commit && uvx pre-commit install
+# Or:      uv run pre-commit run --all-files
+#
+# All hooks below use uv as their runtime so the dev never needs
+# a separate venv — uv resolves environments automatically.
+
+default_language_version:
+  python: python3.11
+
+repos:
+  # ── Ruff (via uv): lint + format ──────────────────────────────────────
+  # Uses the official ruff-pre-commit repo so the hook binary matches
+  # the version pinned in pyproject.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.7
+    hooks:
+      - id: ruff
+        name: ruff check (lint + auto-fix)
+        args: [--fix, --exit-non-zero-on-fix]
+        # --exit-non-zero-on-fix: fail if any file was changed,
+        # so the engineer sees what was auto-fixed before re-committing.
+      - id: ruff-format
+        name: ruff format
+
+  # ── uv-managed local hooks ────────────────────────────────────────────
+  # These run under `uv run` so they use the project's own lockfile.
+  - repo: local
+    hooks:
+      - id: uv-sync-check
+        name: uv sync check (lockfile up to date)
+        language: system
+        entry: uv sync --frozen --check
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
+        # Fails if pyproject.toml changed but uv.lock was not regenerated.
+
+      - id: pytest-fast
+        name: pytest protection tests
+        language: system
+        entry: uv run pytest tests/ -q --tb=short
+        pass_filenames: false
+        stages: [pre-push]   # slow tests on push only, not every commit
+
+  # ── General file hygiene ──────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-yaml
+        args: [--unsafe]   # allow tags like !!python in YAML files
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-json        # validates all *.ipynb files too
+      - id: check-merge-conflict

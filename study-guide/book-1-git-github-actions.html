@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Git &amp; GitHub Actions — The DevOps Architect's Path, Book I</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════ COVER ═══════════════════════════ -->
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book I · Edition 2026</div>
+    <h1>Git &amp;<br>GitHub Actions</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">commit internals</strong> to <strong style="color:#8ff4ee">production CI/CD pipelines</strong>. Every concept answered with What, Why, How, and When — plus real-world scenarios, before/after patterns, and the security model that keeps pipelines trustworthy.</div>
+    <div class="stackrow">🔀 Git · ⚙️ Actions · 🔐 OIDC · 🚀 CD · 🛡️ Supply-chain</div>
+    <div class="badges">
+      <span class="badge">🔀 Git internals &amp; DAG</span>
+      <span class="badge">🌿 Branching strategies</span>
+      <span class="badge">⚙️ GitHub Actions architecture</span>
+      <span class="badge">🔐 OIDC — no long-lived keys</span>
+      <span class="badge">🚀 CI/CD gate design</span>
+      <span class="badge">🛡️ Supply-chain security</span>
+      <span class="badge">♻️ Reusable workflows</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Every pattern has runnable code.</strong><br>Companion notebooks in <code style="color:#cfe0d6">01-git-github-actions/</code>.</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ TOC ═══════════════════════════ -->
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <p class="small">Book I of the series — the foundation on which every other DevOps tool rests. Version control is not just history; it is the source of truth. CI/CD is not just automation; it is the quality gate your organisation relies on at 2 AM. This book covers every layer: the object model inside Git, branching strategies at org scale, the event architecture of GitHub Actions, OIDC authentication, and advanced pipeline patterns.</p>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">Git Internals — The Content-Addressed DAG</div><div class="dd">Blobs, trees, commits · SHA identity · the three trees · reflog</div></div><span class="ic">🔀</span></li>
+    <li><span class="n">2</span><div><div class="tt">Branching Strategies at Scale</div><div class="dd">Trunk-based · GitHub Flow · GitFlow · when each breaks down</div></div><span class="ic">🌿</span></li>
+    <li><span class="n">3</span><div><div class="tt">The CI/CD Mental Model</div><div class="dd">Quality gates · DORA metrics · the pipeline as code · anti-patterns</div></div><span class="ic">🚀</span></li>
+    <li><span class="n">4</span><div><div class="tt">GitHub Actions Architecture</div><div class="dd">Events · runners · jobs · steps · contexts · action types</div></div><span class="ic">⚙️</span></li>
+    <li><span class="n">5</span><div><div class="tt">Secrets &amp; OIDC Security</div><div class="dd">Secret leakage vectors · OIDC token flow · supply-chain attacks</div></div><span class="ic">🔐</span></li>
+    <li><span class="n">6</span><div><div class="tt">Advanced Workflow Patterns</div><div class="dd">Reusable workflows · matrix builds · path filters · concurrency</div></div><span class="ic">♻️</span></li>
+    <li><span class="n">7</span><div><div class="tt">Monorepo vs Polyrepo CI</div><div class="dd">Affected analysis · Nx / Turborepo · trade-offs</div></div><span class="ic">🏗️</span></li>
+    <li><span class="n">8</span><div><div class="tt">Real-World Case Studies</div><div class="dd">Netflix · Shopify · Google trunk-based · GitHub itself</div></div><span class="ic">🌍</span></li>
+    <li><span class="n">9</span><div><div class="tt">The Pipeline Design Framework</div><div class="dd">7 questions before any pipeline · senior vs junior answer</div></div><span class="ic">🧠</span></li>
+  </ol>
+  <div class="subitems">Companion notebooks: <code>git_github_actions_mental_models.ipynb</code> · <code>examples/01_git_internals.ipynb</code> · <code>examples/02_github_actions_patterns.ipynb</code></div>
+</section>
+
+<!-- ═══════════════════════════ CHAPTER ═══════════════════════════ -->
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">🔀</div>
+    <div><div class="t">Git &amp; GitHub Actions</div>
+    <div class="s">From a commit's SHA to a production deployment in under 10 minutes — and the security model that makes it trustworthy</div></div>
+    <div class="ico">⚙️</div>
+  </div>
+
+  <p class="lead">Git is not a "track changes" tool. It is a <strong>content-addressed, immutable, append-only directed acyclic graph</strong>. GitHub Actions is not a "script runner". It is an <strong>event-driven workflow engine</strong> that treats your pipeline as first-class, version-controlled code. Understanding both at this depth is what separates an engineer who <em>uses</em> CI/CD from an architect who <em>designs</em> it.</p>
+
+  <div class="coderef">
+    <div class="h">📂 Companion code</div>
+    <p style="margin:0 0 3px">All patterns in this book have runnable Python simulations:</p>
+    <ul>
+      <li><span class="path">01-git-github-actions/git_github_actions_mental_models.ipynb</span> — the master notebook covering all sections</li>
+      <li><span class="path">01-git-github-actions/examples/01_git_internals.ipynb</span> — Git object store, DAG traversal, bisect simulation</li>
+      <li><span class="path">01-git-github-actions/examples/02_github_actions_patterns.ipynb</span> — OIDC auth flow, pipeline optimiser</li>
+      <li><span class="path">01-git-github-actions/architectural_notes.md</span> — senior trade-off analysis</li>
+      <li><span class="path">01-git-github-actions/interview_questions.md</span> — staff/principal-level Q&amp;A</li>
+    </ul>
+  </div>
+
+  <!-- ══════════ 1 · GIT INTERNALS ══════════ -->
+  <h2 class="sec" id="s1">1 · Git Internals — The Content-Addressed DAG</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Immutable Ledger</div>
+  <p>Git is like a bank ledger: every entry is permanent and chained to the previous one. You cannot change a past transaction — you can only add new ones. Each commit's SHA is a cryptographic hash of its entire content plus its parent's SHA. If anyone alters a single byte in history, every subsequent SHA changes. <strong>Tampering is physically detectable.</strong></p></div>
+
+  <div class="def what"><span class="lab">What</span><p>Git is a <em class="term">content-addressed key-value store</em> layered on a <em class="term">directed acyclic graph</em> of commits. The key is a SHA-1 hash of the content; the value is one of four object types: <strong>blob</strong> (file content), <strong>tree</strong> (directory listing of blobs and sub-trees), <strong>commit</strong> (pointer to a tree + metadata + parent commits), <strong>tag</strong> (annotated pointer to a commit).</p></div>
+
+  <div class="def why"><span class="lab">Why it matters</span><p>Because the content-addressed model gives you integrity, deduplication, and cheap branches — all as emergent properties of the design, not as added features. A branch is a 40-byte pointer. Identical files across commits share one blob object. History cannot be silently rewritten. These properties underpin every collaborative workflow.</p></div>
+
+  <div class="def how"><span class="lab">How — Object Graph Walkthrough</span>
+  <p>When you run <code class="inl">git commit</code>, Git:</p>
+  <ol style="margin:4px 0; padding-left:20px;">
+    <li>Hashes each changed file → new blob objects</li>
+    <li>Hashes the directory tree → new tree object (unchanged files reuse existing blobs)</li>
+    <li>Hashes the commit (author + timestamp + tree SHA + parent SHA) → commit object</li>
+    <li>Moves the current branch pointer to the new commit SHA</li>
+  </ol>
+  <p>The SHA chain means: change any file → new blob → new tree → new commit → different SHA. History is verified by re-hashing.</p></div>
+
+  <div class="def when"><span class="lab">When it matters operationally</span><p>Understanding the object model explains why <code class="inl">git push --force</code> on a shared branch is destructive (it orphans commits others have built on), why <code class="inl">git rebase</code> rewrites SHAs (new commit objects with different parent chains), and why the reflog is your safety net (orphaned objects survive for ~30 days).</p></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 240" role="img" aria-label="Git object graph">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+        </marker>
+        <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#0284c7"/>
+        </marker>
+      </defs>
+      <g font-family="Segoe UI,sans-serif">
+        <!-- Branch pointer -->
+        <rect x="10" y="90" width="60" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="40" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="#14532d">main</text>
+        <path d="M70,103 L100,103" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Commit 2 (HEAD) -->
+        <rect x="100" y="80" width="110" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="155" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">commit a3f4b1c</text>
+        <text x="155" y="112" text-anchor="middle" font-size="8" fill="#3b5998">tree: 7a2c9d1</text>
+        <text x="155" y="123" text-anchor="middle" font-size="8" fill="#3b5998">parent: 9e2d3f8</text>
+
+        <!-- HEAD label -->
+        <rect x="126" y="60" width="60" height="18" rx="5" fill="#fef3c7" stroke="#d97706"/>
+        <text x="156" y="73" text-anchor="middle" font-size="8" font-weight="700" fill="#b45309">HEAD</text>
+        <path d="M156,78 L156,80" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Commit 1 -->
+        <rect x="260" y="80" width="110" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="315" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">commit 9e2d3f8</text>
+        <text x="315" y="112" text-anchor="middle" font-size="8" fill="#3b5998">tree: 4c1a7b2</text>
+        <text x="315" y="123" text-anchor="middle" font-size="8" fill="#3b5998">parent: (none)</text>
+
+        <!-- Arrow between commits -->
+        <path d="M210,103 L258,103" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="234" y="98" text-anchor="middle" font-size="8" fill="#64748b">parent</text>
+
+        <!-- Tree 1 (commit 2) -->
+        <rect x="100" y="170" width="110" height="50" rx="8" fill="#f3e8ff" stroke="#8b5cf6"/>
+        <text x="155" y="188" text-anchor="middle" font-size="9" font-weight="700" fill="#5b21b6">tree 7a2c9d1</text>
+        <text x="155" y="203" text-anchor="middle" font-size="8" fill="#6d28d9">main.py → blob f4a</text>
+        <text x="155" y="215" text-anchor="middle" font-size="8" fill="#6d28d9">README → blob 9c8 ←shared</text>
+        <path d="M155,126 L155,168" stroke="#8b5cf6" stroke-width="1.2" stroke-dasharray="4" marker-end="url(#arr)"/>
+
+        <!-- Blob: main.py v2 -->
+        <rect x="430" y="155" width="100" height="30" rx="6" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="480" y="168" text-anchor="middle" font-size="8" font-weight="700" fill="#713f12">blob f4a: main.py</text>
+        <text x="480" y="180" text-anchor="middle" font-size="8" fill="#713f12">v2 — changed</text>
+
+        <!-- Blob: README (shared) -->
+        <rect x="430" y="195" width="100" height="30" rx="6" fill="#d1fae5" stroke="#059669"/>
+        <text x="480" y="208" text-anchor="middle" font-size="8" font-weight="700" fill="#065f46">blob 9c8: README</text>
+        <text x="480" y="220" text-anchor="middle" font-size="7.5" fill="#065f46">shared — same SHA</text>
+
+        <!-- Arrows from tree to blobs -->
+        <path d="M210,188 L428,170" stroke="#8b5cf6" stroke-width="1" marker-end="url(#arr)"/>
+        <path d="M210,200 L428,208" stroke="#059669" stroke-width="1" marker-end="url(#arr)"/>
+
+        <!-- Tree 2 (commit 1) -->
+        <rect x="260" y="170" width="110" height="50" rx="8" fill="#f3e8ff" stroke="#8b5cf6"/>
+        <text x="315" y="188" text-anchor="middle" font-size="9" font-weight="700" fill="#5b21b6">tree 4c1a7b2</text>
+        <text x="315" y="203" text-anchor="middle" font-size="8" fill="#6d28d9">main.py → blob e1b</text>
+        <text x="315" y="215" text-anchor="middle" font-size="8" fill="#6d28d9">README → blob 9c8 ←shared</text>
+        <path d="M315,126 L315,168" stroke="#8b5cf6" stroke-width="1.2" stroke-dasharray="4" marker-end="url(#arr)"/>
+
+        <!-- Blob: main.py v1 -->
+        <rect x="550" y="170" width="100" height="30" rx="6" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="600" y="183" text-anchor="middle" font-size="8" font-weight="700" fill="#713f12">blob e1b: main.py</text>
+        <text x="600" y="195" text-anchor="middle" font-size="8" fill="#713f12">v1 — original</text>
+
+        <!-- Arrows from tree2 to blobs -->
+        <path d="M370,186 L548,181" stroke="#8b5cf6" stroke-width="1" marker-end="url(#arr)"/>
+        <path d="M370,205 L428,208" stroke="#059669" stroke-width="1" marker-end="url(#arr)"/>
+
+        <!-- Key insight annotation -->
+        <rect x="540" y="215" width="300" height="22" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+        <text x="690" y="230" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">README blob SHA is identical in both commits → deduplicated</text>
+      </g>
+    </svg>
+    <figcaption>Figure 1.1 — Git's object graph. Two commits share the same README blob because the file is unchanged — content-addressing means identical content = one stored object. Changing <code>main.py</code> creates a new blob (f4a), a new tree (7a2c9d1), and a new commit (a3f4b1c). The commit SHA chain makes every change verifiable and history immutable.</figcaption>
+  </figure>
+
+  <h3 class="sub">The Three Trees — Git's Most Misunderstood Model</h3>
+
+  <p>Engineers who understand "add, commit, push" but not the three trees are perpetually confused by <code class="inl">git reset</code>, <code class="inl">git restore</code>, and merge conflicts. The three trees are three separate views of your repository state that Git keeps in sync:</p>
+
+  <table>
+    <tr><th>Tree</th><th>What it holds</th><th>How to move it</th><th>Command to inspect</th></tr>
+    <tr><td><strong>HEAD</strong></td><td>Last commit snapshot</td><td><code class="inl">git commit</code></td><td><code class="inl">git show HEAD</code></td></tr>
+    <tr><td><strong>Index (Staging)</strong></td><td>Proposed next commit</td><td><code class="inl">git add</code></td><td><code class="inl">git diff --staged</code></td></tr>
+    <tr><td><strong>Working Directory</strong></td><td>Actual files on disk</td><td>Editing files</td><td><code class="inl">git diff</code></td></tr>
+  </table>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Why git reset has three modes</div>
+  <p><code class="inl">git reset --soft HEAD~1</code> moves only HEAD (undoes the commit, keeps staged changes). <code class="inl">git reset HEAD~1</code> moves HEAD + resets the index (undoes commit AND unstages, keeps working dir). <code class="inl">git reset --hard HEAD~1</code> moves all three trees (destroys working dir changes). The three-tree mental model makes this immediately obvious — you're choosing how many trees to move.</p></div>
+
+  <h3 class="sub">The Reflog — Git's Safety Net</h3>
+
+  <div class="box gotcha"><span class="ic">⚠️</span><div class="h">Gotcha — "I destroyed my work with git reset --hard"</div>
+  <p>Nothing is truly lost in Git for ~30 days. The reflog records every movement of HEAD. After a bad <code class="inl">git reset --hard</code>: run <code class="inl">git reflog</code> to find the SHA you were at, then <code class="inl">git checkout -b recovery &lt;sha&gt;</code> to recover it. The orphaned commits still exist in <code class="inl">.git/objects</code> until garbage collection runs. Engineers who know the reflog have a superpower their colleagues lack.</p></div>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">Before — Panic</div>
+      <pre>$ git reset --hard HEAD~3
+$ # "Oh no, I lost 3 commits of work!"
+$ git log --oneline
+a3f4b1c  Initial commit
+# The commits seem gone...</pre>
+    </div>
+    <div class="ba-col good">
+      <div class="label">After — Reflog Recovery</div>
+      <pre>$ git reflog
+d5e6f7a HEAD@{0}: reset: moving to HEAD~3
+c3b2a1f HEAD@{1}: commit: Add payment module
+b2a1c9e HEAD@{2}: commit: Add user service
+...
+$ git checkout -b recovery c3b2a1f
+# All 3 commits recovered ✓</pre>
+    </div>
+  </div>
+
+  <div class="qa"><div class="q">Q · Why does changing a single byte in a file change the entire commit chain?</div>
+  <p>Because Git uses content-addressing: each object's identity IS its SHA hash of its content. Change a file → new blob SHA → the tree that references that blob gets a new SHA → the commit that references that tree gets a new SHA. The chain is cryptographic: every SHA is a hash of the content including all the SHAs it points to. This is why Git history can be verified and why <code class="inl">git push --force</code> on a shared branch is dangerous — it orphans all commits that pointed to the old chain.</p></div>
+
+  <div class="qa"><div class="q">Q · What is git bisect and why is it O(log n)?</div>
+  <p>Git bisect finds the commit that introduced a bug by binary search through the commit DAG. You mark a known-good commit and the current bad commit. Bisect picks the midpoint, you test it and mark it good or bad. This halves the search space each step. For 1,000 commits, that's ≤10 tests instead of up to 1,000. It leverages the immutable DAG structure — each commit is uniquely identifiable by its SHA, and you can checkout any commit in O(1). The algorithm is: <code class="inl">while (hi - lo) &gt; 1: mid = (lo+hi)/2; test(mid) → update lo or hi</code>.</p></div>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: Linux Kernel — 1,000+ Contributors, Zero Tampered Commits</div>
+  <p>The Linux kernel receives patches from engineers worldwide whom Linus Torvalds has never met. Because every patch is identified by its SHA, Linus can accept code knowing that the bytes he receives are exactly what was sent — no manipulation in transit, no hidden changes. The cryptographic chain extends through the entire history: any tampering with any file in any commit would change every subsequent SHA. Git's object model is the Linux kernel's distributed trust system. As of 2026, the kernel repo has 1.2M commits and has never had a verified case of undetected history tampering.</p></div>
+
+  <!-- ══════════ 2 · BRANCHING ══════════ -->
+  <h2 class="sec" id="s2">2 · Branching Strategies at Scale</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Blast-Radius Dial</div>
+  <p>Every branching strategy is a dial between two extremes: maximum <em>isolation</em> (long-lived branches, protected from others' work) and maximum <em>integration speed</em> (trunk-based, work is always merged). Turn the dial toward isolation and you get merge hell when the branches eventually meet. Turn it toward integration and you need automated quality gates to catch breakage before it hits shared state. The best strategy is the one that matches your team's deployment frequency and test coverage.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>A branching strategy defines: which branches are long-lived, when you branch (feature start? release start?), how you integrate (merge commit, squash, or rebase?), and who can merge where. It is the social protocol for a team sharing a codebase.</p></div>
+
+  <div class="def why"><span class="lab">Why it matters</span><p>The wrong branching strategy is a leading cause of "integration hell" — days before a release merging months of parallel work. It is also a leading cause of slow feedback loops — feature branches that live for weeks mean engineers work in isolation and only find conflicts at merge time, not when they're introduced.</p></div>
+
+  <div class="def how"><span class="lab">How — The Three Common Strategies</span>
+  <p><strong>Trunk-Based Development:</strong> All commits go directly to <code class="inl">main</code> (or via branches that live &lt;1 day). Incomplete features are hidden by feature flags. Requires: strong test coverage, feature flag infrastructure, senior discipline. Used by: Google, Facebook, Netflix.</p>
+  <p><strong>GitHub Flow:</strong> Short-lived feature branches → PR → squash merge to <code class="inl">main</code> → auto-deploy. <code class="inl">main</code> is always deployable. No release branches. Requires: CI that runs on every PR, ability to deploy frequently. Used by: GitHub, Shopify, Vercel.</p>
+  <p><strong>GitFlow:</strong> <code class="inl">main</code> (stable releases) + <code class="inl">develop</code> (integration) + <code class="inl">feature/*</code> + <code class="inl">release/*</code> + <code class="inl">hotfix/*</code>. Multiple concurrent production versions. Requires: long release cycles, enterprise compliance. Used by: Enterprise software with LTS versions.</p></div>
+
+  <div class="def when"><span class="lab">When to use each</span><p>Trunk-based: continuous delivery, 10+ deploys/day, feature flags available. GitHub Flow: daily deploys, one production version, small-medium teams. GitFlow: weekly/monthly releases, multiple supported versions (SaaS with enterprise customers on v2 while v3 ships), compliance-heavy industries.</p></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 200" role="img" aria-label="Branching strategies comparison">
+      <g font-family="Segoe UI,sans-serif">
+        <!-- Trunk-based -->
+        <text x="10" y="20" font-size="10" font-weight="800" fill="#15803d">TRUNK-BASED (Google, Netflix)</text>
+        <line x1="10" y1="40" x2="420" y2="40" stroke="#16a34a" stroke-width="3"/>
+        <circle cx="80" cy="40" r="5" fill="#16a34a"/><circle cx="160" cy="40" r="5" fill="#16a34a"/>
+        <circle cx="240" cy="40" r="5" fill="#16a34a"/><circle cx="320" cy="40" r="5" fill="#16a34a"/>
+        <circle cx="400" cy="40" r="5" fill="#16a34a"/>
+        <!-- short branch -->
+        <line x1="160" y1="40" x2="200" y2="60" stroke="#86efac" stroke-width="1.5"/>
+        <line x1="200" y1="60" x2="240" y2="40" stroke="#86efac" stroke-width="1.5"/>
+        <text x="215" y="80" text-anchor="middle" font-size="7" fill="#16a34a">&lt;1 day branch</text>
+        <text x="430" y="44" font-size="9" fill="#15803d">main (always deployable)</text>
+
+        <!-- GitHub Flow -->
+        <text x="10" y="110" font-size="10" font-weight="800" fill="#1d4ed8">GITHUB FLOW (Shopify, Vercel)</text>
+        <line x1="10" y1="130" x2="420" y2="130" stroke="#3b82f6" stroke-width="3"/>
+        <circle cx="80" cy="130" r="5" fill="#3b82f6"/><circle cx="280" cy="130" r="5" fill="#3b82f6"/>
+        <circle cx="400" cy="130" r="5" fill="#3b82f6"/>
+        <!-- feature branch -->
+        <line x1="80" y1="130" x2="100" y2="155" stroke="#93c5fd" stroke-width="1.5"/>
+        <line x1="100" y1="155" x2="200" y2="155" stroke="#93c5fd" stroke-width="1.5"/>
+        <line x1="200" y1="155" x2="280" y2="130" stroke="#93c5fd" stroke-width="1.5"/>
+        <text x="150" y="170" text-anchor="middle" font-size="7" fill="#1d4ed8">feature/* (1-5 days)</text>
+        <text x="430" y="134" font-size="9" fill="#1d4ed8">main (always deployable)</text>
+      </g>
+    </svg>
+    <figcaption>Figure 1.2 — Trunk-based development (top) uses very short-lived branches (&lt;1 day) with feature flags to hide incomplete work. GitHub Flow (bottom) uses slightly longer feature branches that merge to main via PR. Both keep <code>main</code> always deployable — in contrast to GitFlow where <code>main</code> is only updated on release.</figcaption>
+  </figure>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: Shopify's Sub-10-Minute Deployment Pipeline</div>
+  <p>Shopify runs GitHub Flow on a Rails monolith. Their CI pipeline runs 10,000+ Ruby tests split across 20 parallel workers, completing in under 10 minutes. Feature flags (<a href="#">Flipper</a>) gate all in-progress work, enabling trunk-based development at 350+ engineers without long-lived branches. Every merge to <code>main</code> is auto-deployed via their internal <em>Shipit</em> tool — not GitHub Actions — because they needed finer-grained control over their deployment sequence. <strong>Key lesson:</strong> the branching strategy (GitHub Flow) and the deployment tool (custom Shipit) are separate decisions; choosing the right tool for each is the senior architect's job.</p></div>
+
+  <div class="box gotcha"><span class="ic">⚠️</span><div class="h">Gotcha — GitFlow on a continuous delivery team</div>
+  <p>GitFlow was designed for teams that release once a month with multiple supported versions. Using it for a team that deploys daily is an anti-pattern. The overhead of <code class="inl">develop</code> → <code class="inl">release/*</code> → <code class="inl">main</code> means every feature takes 3 extra branch operations and introduces 1-2 weeks of latency between code being written and code being in production. Engineers who write this code lose feedback fast. The symptom: "why did this bug reach prod? We wrote the fix 2 weeks ago." Answer: it was sitting in a release branch waiting for the next release window.</p></div>
+
+  <!-- ══════════ 3 · CI/CD MENTAL MODEL ══════════ -->
+  <h2 class="sec" id="s3">3 · The CI/CD Mental Model</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Quality Gate Assembly Line</div>
+  <p>A CI/CD pipeline is a quality gate assembly line. Each station checks a specific failure mode. If a check fails, the piece is rejected before reaching the next stage. A car doesn't reach the dealer with a broken engine because the engine test station rejected it first. Your pipeline's job is to catch defects at the cheapest possible stage — a linting error caught before review costs 10 seconds; the same defect found by a customer costs 10 hours.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>CI (Continuous Integration) is the practice of automatically building and testing every code change. CD (Continuous Delivery/Deployment) extends it to automatically deploy to staging and/or production. Together, they eliminate the manual, error-prone steps between "code written" and "code in production."</p></div>
+
+  <div class="def why"><span class="lab">Why it exists</span><p>Before CI/CD: build on my machine → manually run (some) tests → email the binary to ops → ops manually deploy → hope it works. Each manual step is a place where: (a) someone forgets a step, (b) environment differences cause surprises, (c) there's no audit trail. CI/CD makes the process deterministic, auditable, and fast.</p></div>
+
+  <div class="def how"><span class="lab">How — The Gate Structure</span>
+  <p>A well-designed pipeline has gates in order of speed and cost:</p>
+  <ol style="margin:4px 0; padding-left:20px;">
+    <li><strong>Gate 1 — Fast feedback (parallel):</strong> lint + unit tests + SAST (target: &lt;3 min)</li>
+    <li><strong>Gate 2 — Build artifact:</strong> compile/package/containerise (target: &lt;5 min)</li>
+    <li><strong>Gate 3 — Integration:</strong> integration tests + container scan (target: &lt;10 min)</li>
+    <li><strong>Gate 4 — Staging:</strong> deploy to staging + smoke tests (target: &lt;5 min)</li>
+    <li><strong>Gate 5 — Production:</strong> canary deploy + metric verification</li>
+  </ol>
+  <p>Each gate runs only if the previous passed. Gates within a gate run in parallel.</p></div>
+
+  <div class="def when"><span class="lab">When to add a gate</span><p>When you've been burned by that class of failure reaching production more than twice. The gate should be fast enough that the team doesn't disable it. A gate that slows the pipeline by 30 minutes for marginal benefit will be bypassed by engineers under deadline. Every gate is a trade-off between safety and speed — name it explicitly.</p></div>
+
+  <h3 class="sub">DORA Metrics — The Four Numbers That Define Pipeline Health</h3>
+
+  <p>Google's DevOps Research and Assessment (DORA) team identified the four metrics that most accurately predict software delivery performance and organisational performance. Your pipeline is the primary lever for all four:</p>
+
+  <table>
+    <tr><th>Metric</th><th>Elite</th><th>High</th><th>Medium</th><th>Low</th></tr>
+    <tr><td><strong>Deployment frequency</strong></td><td>Multiple/day</td><td>Weekly</td><td>Monthly</td><td>&gt;6 months</td></tr>
+    <tr><td><strong>Lead time for changes</strong></td><td>&lt;1 hour</td><td>1 day–1 week</td><td>1–6 months</td><td>&gt;6 months</td></tr>
+    <tr><td><strong>Change failure rate</strong></td><td>0–5%</td><td>5–10%</td><td>10–15%</td><td>&gt;15%</td></tr>
+    <tr><td><strong>Time to restore service</strong></td><td>&lt;1 hour</td><td>&lt;1 day</td><td>1 day–1 week</td><td>&gt;1 week</td></tr>
+  </table>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Fast pipelines improve all four DORA metrics</div>
+  <p>A 45-minute pipeline causes engineers to batch changes (larger PRs → higher blast radius → higher change failure rate). It also means test failures are discovered 45 minutes after the defect was introduced (long lead time → cold context switching). A 5-minute pipeline enables small, frequent changes: low deployment frequency barrier → more deploys → lower blast radius per deploy → lower failure rate → faster restoration when things go wrong. Pipeline speed is not a vanity metric — it's a force multiplier on every DORA metric.</p></div>
+
+  <!-- ══════════ 4 · GITHUB ACTIONS ══════════ -->
+  <h2 class="sec" id="s4">4 · GitHub Actions Architecture</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Event-Driven Workflow Engine</div>
+  <p>GitHub Actions is an event broker built into your source control. An event (push to <code class="inl">main</code>, PR opened, schedule, manual trigger) is published. Your workflow YAML is the event handler — it declares which events to react to and what to do. Jobs are the parallel processing units; steps are the sequential operations within a job. The key insight: the workflow YAML is code — version-controlled, reviewable, testable. Treat it with the same rigor as application code.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>GitHub Actions is an event-driven automation platform built into GitHub. A <em class="term">workflow</em> is a YAML file in <code class="inl">.github/workflows/</code> that defines: which events trigger it, which jobs to run (on which runner), and which steps to execute in each job. A <em class="term">runner</em> is the VM or container where steps execute. An <em class="term">action</em> is a reusable step packaged as Docker container or JavaScript.</p></div>
+
+  <div class="def why"><span class="lab">Why GitHub Actions over alternatives</span><p>For teams already on GitHub: zero infrastructure to maintain, native PR integration (required status checks, deployment environments), a marketplace of 20,000+ actions, and OIDC for passwordless cloud authentication. The operational cost is zero for public repos and modest for private repos. The alternative (Jenkins) requires a dedicated server, plugin management, and engineering time to maintain — costs justified only when on-premises builds are required.</p></div>
+
+  <div class="def how"><span class="lab">How — The Component Hierarchy</span>
+  <p>From outermost to innermost:</p>
+  <dl class="gloss">
+    <dt>Repository → Workflows</dt><dd>One repo can have many workflow files, each for a different purpose (CI, CD, security scans, scheduled tasks).</dd>
+    <dt>Workflow → Trigger + Jobs</dt><dd>Trigger: when this workflow activates. Jobs: the units of work (run in parallel by default).</dd>
+    <dt>Job → Runner + Steps</dt><dd>Runner: the VM type (ubuntu-latest, windows-latest, self-hosted). Steps: sequential commands within a job.</dd>
+    <dt>Step → Action or shell command</dt><dd>Either <code class="inl">uses: actions/checkout@v4</code> (invokes a packaged action) or <code class="inl">run: pytest tests/</code> (shell command).</dd>
+  </dl></div>
+
+  <div class="def when"><span class="lab">When to use which runner</span><p>GitHub-hosted (ubuntu-latest): 95% of cases — no maintenance, ephemeral, already has Docker and major language runtimes. Self-hosted: when you need private network access (RDS in a VPC), specific hardware (GPU for ML tests), regulatory compliance (code must not leave your network), or persistent build caches.</p></div>
+
+  <pre><span class="cmt"># ✅ PRODUCTION-GRADE WORKFLOW — every decision explained</span>
+<span class="k">name</span>: CI/CD Pipeline
+
+<span class="k">on</span>:
+  <span class="k">push</span>:
+    <span class="k">branches</span>: [main]
+    <span class="k">paths</span>:                          <span class="cmt"># ✓ only run when code changes</span>
+      - <span class="s">'src/**'</span>
+      - <span class="s">'tests/**'</span>
+      - <span class="s">'requirements*.txt'</span>
+  <span class="k">pull_request</span>:
+    <span class="k">branches</span>: [main]
+    <span class="k">types</span>: [opened, synchronize, reopened]
+
+<span class="cmt"># ✓ cancel stale runs; queue prod deploys (never cancel them)</span>
+<span class="k">concurrency</span>:
+  <span class="k">group</span>: <span class="s">${{ github.workflow }}-${{ github.ref }}</span>
+  <span class="k">cancel-in-progress</span>: <span class="s">${{ github.ref != 'refs/heads/main' }}</span>
+
+<span class="k">jobs</span>:
+  <span class="cmt"># ── GATE 1: parallel, fast (target: under 3 minutes) ──────────</span>
+  <span class="k">lint</span>:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">timeout-minutes</span>: 5             <span class="cmt"># ✓ never hang</span>
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/checkout@v4</span>  <span class="cmt"># ✓ pinned to major version</span>
+      - <span class="k">uses</span>: <span class="s">actions/setup-python@v5</span>
+        <span class="k">with</span>: { python-version: <span class="s">'3.11'</span>, cache: pip }  <span class="cmt"># ✓ cache deps</span>
+      - <span class="k">run</span>: pip install ruff &amp;&amp; ruff check . &amp;&amp; ruff format --check .
+
+  <span class="k">unit-tests</span>:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">timeout-minutes</span>: 10
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/checkout@v4</span>
+      - <span class="k">uses</span>: <span class="s">actions/setup-python@v5</span>
+        <span class="k">with</span>: { python-version: <span class="s">'3.11'</span>, cache: pip }
+      - <span class="k">run</span>: pip install -r requirements-dev.txt
+      - <span class="k">run</span>: pytest tests/unit/ --tb=short --cov=src --cov-report=xml
+
+  <span class="k">security-scan</span>:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">timeout-minutes</span>: 8
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/checkout@v4</span>
+      - <span class="k">uses</span>: <span class="s">pypa/gh-action-pip-audit@v1.1.0</span>  <span class="cmt"># ✓ CVE scan</span>
+      - <span class="k">uses</span>: <span class="s">returntocorp/semgrep-action@v1</span>    <span class="cmt"># ✓ SAST</span>
+
+  <span class="cmt"># ── GATE 2: build (waits for ALL of Gate 1) ────────────────────</span>
+  <span class="k">build</span>:
+    <span class="k">needs</span>: [lint, unit-tests, security-scan]  <span class="cmt"># ✓ all gates must pass</span>
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">timeout-minutes</span>: 20
+    <span class="k">permissions</span>:
+      <span class="k">contents</span>: read
+      <span class="k">packages</span>: write
+      <span class="k">id-token</span>: write  <span class="cmt"># ✓ OIDC — no stored credentials</span>
+    <span class="k">outputs</span>:
+      <span class="k">image-tag</span>: <span class="s">${{ steps.meta.outputs.tags }}</span>
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/checkout@v4</span>
+      - <span class="k">uses</span>: <span class="s">docker/setup-buildx-action@v3</span>
+      - <span class="k">uses</span>: <span class="s">docker/login-action@v3</span>
+        <span class="k">with</span>: { registry: ghcr.io, username: <span class="s">${{ github.actor }}</span>,
+                 password: <span class="s">${{ secrets.GITHUB_TOKEN }}</span> }
+      - <span class="k">id</span>: meta
+        <span class="k">uses</span>: <span class="s">docker/metadata-action@v5</span>
+        <span class="k">with</span>: { images: <span class="s">ghcr.io/${{ github.repository }}</span>,
+                 tags: <span class="s">"type=sha,prefix=sha-"</span> }
+      - <span class="k">uses</span>: <span class="s">docker/build-push-action@v6</span>
+        <span class="k">with</span>: { push: <span class="s">${{ github.event_name != 'pull_request' }}</span>,
+                 tags: <span class="s">${{ steps.meta.outputs.tags }}</span>,
+                 cache-from: <span class="s">type=gha</span>, cache-to: <span class="s">type=gha,mode=max</span> }</pre>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Five non-negotiable workflow properties</div>
+  <ul class="tick">
+    <li><strong>Timeout on every job</strong> — a job without <code class="inl">timeout-minutes</code> can run indefinitely and block runner minutes</li>
+    <li><strong>Dependency caching</strong> — <code class="inl">actions/setup-python@v5</code> with <code class="inl">cache: pip</code> reduces install time from 60s to 3s</li>
+    <li><strong>Pinned actions</strong> — <code class="inl">@v4</code> not <code class="inl">@main</code> (supply chain protection)</li>
+    <li><strong>Concurrency groups</strong> — prevents two deploys racing; cancels stale PR runs</li>
+    <li><strong>Path filters</strong> — only run CI on relevant changes (docs change ≠ run all tests)</li>
+  </ul></div>
+
+  <!-- ══════════ 5 · SECRETS & OIDC ══════════ -->
+  <h2 class="sec" id="s5">5 · Secrets &amp; OIDC Security</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Eliminate the Credential, Not Just Rotate It</div>
+  <p>The goal is not to store a long-lived AWS key securely. The goal is to not have a long-lived AWS key at all. OIDC achieves this: GitHub proves its identity to AWS, AWS issues a credential that expires when the job ends. There is no secret to store, no rotation schedule, and no blast radius if something leaks — an expired credential is useless. This is the zero-trust architecture applied to CI/CD.</p></div>
+
+  <div class="def what"><span class="lab">What — OIDC</span><p>OpenID Connect (OIDC) is an identity protocol. GitHub issues a short-lived signed JWT (JSON Web Token) to each running job. Your cloud provider (AWS, GCP, Azure) is configured to trust GitHub's OIDC issuer. The job presents the JWT to the cloud provider's STS endpoint. STS verifies the signature and the claims (which repo, which branch, which environment), then issues a short-lived credential. The credential expires when the job ends.</p></div>
+
+  <div class="def why"><span class="lab">Why OIDC over stored secrets</span><p>Stored secrets have three failure modes: they can be committed accidentally, leaked from GitHub's systems, or persisted after the person who created them leaves. OIDC eliminates the secret entirely. No rotation needed. A stolen OIDC JWT is useless after the job ends (typically &lt;15 minutes). AWS CloudTrail shows exactly which GitHub repo and workflow made which API calls — a complete audit trail without any credential management overhead.</p></div>
+
+  <div class="def how"><span class="lab">How — The Token Flow</span>
+  <ol style="margin:4px 0; padding-left:20px;">
+    <li>Job starts → GitHub's OIDC provider issues a signed JWT with claims: <code class="inl">sub: repo:org/repo:ref:refs/heads/main</code></li>
+    <li>Workflow calls <code class="inl">aws-actions/configure-aws-credentials</code> with the role ARN</li>
+    <li>Action presents JWT to AWS STS <code class="inl">AssumeRoleWithWebIdentity</code></li>
+    <li>AWS verifies JWT signature against GitHub's public JWKS endpoint</li>
+    <li>AWS checks the IAM role's trust policy: does the JWT's <code class="inl">sub</code> match the allowed repos?</li>
+    <li>AWS issues temporary credentials (15min–12hr TTL)</li>
+    <li>Job uses credentials → they expire automatically when the job ends</li>
+  </ol></div>
+
+  <div class="def when"><span class="lab">When to use OIDC vs stored secrets</span><p>Use OIDC for all cloud provider authentication where the provider supports it (AWS, GCP, Azure, Vault all support OIDC from GitHub Actions). Use stored GitHub Secrets for: third-party SaaS tokens that don't support OIDC (Datadog, PagerDuty, Slack), or when you need a specific credential format. OIDC for cloud is the industry standard as of 2024.</p></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 180" role="img" aria-label="OIDC authentication flow">
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#0369a1"/>
+        </marker>
+        <marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#15803d"/>
+        </marker>
+      </defs>
+      <g font-family="Segoe UI,sans-serif">
+        <!-- Actors -->
+        <rect x="10" y="40" width="130" height="60" rx="10" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="75" y="65" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">GitHub Actions</text>
+        <text x="75" y="80" text-anchor="middle" font-size="8" fill="#3b5998">Job starts</text>
+        <text x="75" y="92" text-anchor="middle" font-size="8" fill="#3b5998">OIDC JWT issued</text>
+
+        <rect x="200" y="40" width="140" height="60" rx="10" fill="#ede9fe" stroke="#7c3aed"/>
+        <text x="270" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">GitHub OIDC</text>
+        <text x="270" y="76" text-anchor="middle" font-size="8" fill="#6d28d9">Signs JWT</text>
+        <text x="270" y="88" text-anchor="middle" font-size="8" fill="#6d28d9">Publishes JWKS</text>
+
+        <rect x="400" y="40" width="130" height="60" rx="10" fill="#fef3c7" stroke="#d97706"/>
+        <text x="465" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">AWS STS</text>
+        <text x="465" y="76" text-anchor="middle" font-size="8" fill="#b45309">Verifies JWT sig</text>
+        <text x="465" y="88" text-anchor="middle" font-size="8" fill="#b45309">Checks trust policy</text>
+
+        <rect x="590" y="40" width="130" height="60" rx="10" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="655" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="#14532d">AWS (S3/ECS/etc)</text>
+        <text x="655" y="76" text-anchor="middle" font-size="8" fill="#15803d">Receives temp creds</text>
+        <text x="655" y="88" text-anchor="middle" font-size="8" fill="#15803d">Creds expire in &lt;1hr</text>
+
+        <!-- Flow arrows -->
+        <path d="M140,65 L198,65" stroke="#0369a1" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <text x="169" y="60" text-anchor="middle" font-size="7.5" fill="#0369a1">1. JWT</text>
+        <path d="M270,100 L270,130 L465,130 L465,102" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <text x="367" y="145" text-anchor="middle" font-size="7.5" fill="#7c3aed">2. Verify JWKS signature</text>
+        <path d="M530,70 L588,70" stroke="#15803d" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <text x="559" y="65" text-anchor="middle" font-size="7.5" fill="#15803d">3. Temp creds</text>
+        <path d="M75,100 L75,160 L655,160 L655,102" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#arr3)"/>
+        <text x="367" y="175" text-anchor="middle" font-size="7.5" fill="#15803d">4. Deploy using temporary credentials (expire when job ends)</text>
+
+        <!-- No stored secrets label -->
+        <rect x="780" y="40" width="75" height="60" rx="8" fill="#fef2f2" stroke="#fca5a5"/>
+        <text x="817" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="#dc2626">❌ No stored</text>
+        <text x="817" y="74" text-anchor="middle" font-size="8" fill="#dc2626">AWS keys</text>
+        <text x="817" y="86" text-anchor="middle" font-size="8" fill="#dc2626">anywhere!</text>
+      </g>
+    </svg>
+    <figcaption>Figure 1.3 — OIDC authentication flow. GitHub issues a signed JWT; AWS STS verifies it against GitHub's public key; AWS issues temporary credentials that expire with the job. No AWS keys are stored anywhere in GitHub — the credential exists only in memory for the duration of the job.</figcaption>
+  </figure>
+
+  <div class="box pitfall"><span class="ic">🚨</span><div class="h">The Codecov Supply-Chain Attack (2021) — a real incident</div>
+  <p>Attackers compromised Codecov's bash uploader script. Teams using <code class="inl">curl -s https://codecov.io/bash | bash</code> in their CI pipelines had environment variables (including <code class="inl">$CODECOV_TOKEN</code>) exfiltrated to the attacker. Affected organisations included Twitch, Twilio, HashiCorp, and Rapid7. <strong>What should have prevented it:</strong> (1) Use the official GitHub Action (<code class="inl">codecov/codecov-action</code>) which is code-reviewed and signed; (2) Never pipe remote scripts to bash; (3) Pin the action to a SHA: <code class="inl">codecov/codecov-action@f9ed4c...</code>. This incident is the canonical argument for pinning actions to commit SHAs rather than version tags.</p></div>
+
+  <!-- ══════════ 6 · ADVANCED PATTERNS ══════════ -->
+  <h2 class="sec" id="s6">6 · Advanced Workflow Patterns</h2>
+
+  <div class="def what"><span class="lab">What — Reusable Workflows</span><p>A reusable workflow is a full workflow file that can be called by other workflows via <code class="inl">uses: ./.github/workflows/_deploy.yml</code>. It has defined inputs and can receive secrets from the caller. Unlike composite actions (which are step-level reuse), reusable workflows provide job-level reuse with their own runners — enabling a platform team to maintain one deploy workflow used by 50 services.</p></div>
+
+  <div class="def why"><span class="lab">Why reusable workflows</span><p>Without reusable workflows, each of 50 microservices has a copy of the same CI logic. When you need to add a security scan step, you update 50 YAML files. With a reusable workflow, the platform team updates one file and all 50 services inherit the change on their next run. DRY applied to pipeline code.</p></div>
+
+  <pre><span class="cmt"># .github/workflows/_python-service.yml — the reusable template</span>
+<span class="k">on</span>:
+  <span class="k">workflow_call</span>:
+    <span class="k">inputs</span>:
+      <span class="k">service-name</span>: { type: string, required: true }
+      <span class="k">environment</span>:  { type: string, default: staging }
+    <span class="k">secrets</span>:
+      <span class="k">KUBE_CONFIG</span>: { required: true }
+
+<span class="k">jobs</span>:
+  <span class="k">ci</span>:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/checkout@v4</span>
+      - <span class="k">uses</span>: <span class="s">actions/setup-python@v5</span>
+        <span class="k">with</span>: { python-version: <span class="s">'3.11'</span>, cache: pip }
+      - <span class="k">run</span>: pip install -r requirements-dev.txt &amp;&amp; pytest tests/
+      - <span class="k">run</span>: docker build -t <span class="s">${{ inputs.service-name }}:${{ github.sha }}</span> .
+
+<span class="cmt"># ── Each service's Jenkinsfile becomes two lines ──────────────</span>
+<span class="cmt"># services/payment-service/.github/workflows/ci.yml</span>
+<span class="k">on</span>: { push: { branches: [main] } }
+<span class="k">jobs</span>:
+  <span class="k">pipeline</span>:
+    <span class="k">uses</span>: <span class="s">./.github/workflows/_python-service.yml</span>
+    <span class="k">with</span>: { service-name: payment-service, environment: production }
+    <span class="k">secrets</span>: inherit  <span class="cmt"># pass all secrets to reusable workflow</span></pre>
+
+  <h3 class="sub">Matrix Builds — Test Across Versions Simultaneously</h3>
+
+  <pre><span class="cmt"># Test across Python 3.9, 3.10, 3.11, 3.12 AND Linux + Windows simultaneously</span>
+<span class="k">jobs</span>:
+  <span class="k">test</span>:
+    <span class="k">strategy</span>:
+      <span class="k">fail-fast</span>: false  <span class="cmt"># ✓ run all matrix combos even if one fails</span>
+      <span class="k">matrix</span>:
+        <span class="k">python-version</span>: [<span class="s">"3.9"</span>, <span class="s">"3.10"</span>, <span class="s">"3.11"</span>, <span class="s">"3.12"</span>]
+        <span class="k">os</span>: [ubuntu-latest, windows-latest]
+        <span class="k">exclude</span>:  <span class="cmt"># optional: skip specific combinations</span>
+          - { os: windows-latest, python-version: <span class="s">"3.9"</span> }
+    <span class="k">runs-on</span>: <span class="s">${{ matrix.os }}</span>
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/setup-python@v5</span>
+        <span class="k">with</span>: { python-version: <span class="s">${{ matrix.python-version }}</span> }
+      - <span class="k">run</span>: pytest tests/
+<span class="cmt"># Spawns 7 jobs simultaneously (4 python × 2 os, minus 1 exclusion)</span></pre>
+
+  <!-- ══════════ 7 · MONOREPO vs POLYREPO ══════════ -->
+  <h2 class="sec" id="s7">7 · Monorepo vs Polyrepo CI</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Conway's Law and Repo Structure</div>
+  <p>Conway's Law: organisations build systems that mirror their communication structure. A polyrepo enforces team autonomy — each team owns their entire stack, deploys independently, and rarely sees each other's code. A monorepo enforces cross-team visibility — changes to shared libraries are immediately visible to all consumers, refactors can span the entire codebase in one PR. Your repo structure is your org structure — choose deliberately.</p></div>
+
+  <table>
+    <tr><th>Dimension</th><th>Monorepo</th><th>Polyrepo</th></tr>
+    <tr><td>Code sharing</td><td>Trivial (same import path)</td><td>Requires publishing packages with versions</td></tr>
+    <tr><td>Atomic cross-service changes</td><td>One PR changes 5 services</td><td>5 PRs + coordination</td></tr>
+    <tr><td>CI scope</td><td>Must be path-filtered (changed services only)</td><td>Each repo runs its own full suite</td></tr>
+    <tr><td>Team autonomy</td><td>Lower (shared ownership)</td><td>Higher (each team owns their repo)</td></tr>
+    <tr><td>Build tooling complexity</td><td>Requires Nx / Turborepo / Bazel</td><td>Standard tools</td></tr>
+    <tr><td>Discovery</td><td>Everything in one place</td><td>Need to know where to look</td></tr>
+  </table>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: Google's Monorepo at Extreme Scale</div>
+  <p>Google's Piper monorepo contains 2+ billion lines of code across every product. Their custom CI system (TAP — Test Automation Platform) runs tests for every file that <em>transitively depends</em> on changed code — using Bazel's hermetic, reproducible build graph to determine affected targets. A change to a core library automatically tests all 10,000 services that depend on it. The key infrastructure: Bazel's hermetic builds (same binary on any machine, anywhere), distributed build caching (no redundant compilation), and CODE_OWNER files that route reviews to the right team. Without this tooling, a monorepo at this scale would be unusable. The lesson: monorepo is a strategy that requires investment in tooling; polyrepo is a strategy that requires investment in package management and versioning.</p></div>
+
+  <!-- ══════════ 8 · CASE STUDIES ══════════ -->
+  <h2 class="sec" id="s8">8 · Real-World Case Studies</h2>
+
+  <h3 class="sub">Netflix — Freedom and Responsibility at CI Scale</h3>
+  <p>Netflix runs 2,000+ microservices with 500+ engineers deploying multiple times per hour. Their CI/CD philosophy is "freedom and responsibility": each service team owns their entire pipeline, with no central CI team gate-keeping deployments.</p>
+  <ul class="plain">
+    <li><strong>Spinnaker</strong> (open-sourced by Netflix): pipeline orchestration platform that manages canary deployments, automated rollback, and multi-cloud deployments.</li>
+    <li><strong>Canary analysis</strong>: every deployment starts at 1% traffic, with automated comparison of error rate, latency, and business metrics against the baseline. Auto-promote or auto-rollback based on statistical significance.</li>
+    <li><strong>Chaos Engineering</strong>: CI pipelines include chaos tests (Chaos Monkey) — services must pass resiliency tests before deployment.</li>
+  </ul>
+  <p><strong>Key architectural decision:</strong> Netflix chose service team autonomy over centralised control. This means each team can deploy independently without coordinating with others — maximising deployment frequency — but also means there's no central safety net. Each team is responsible for their own reliability.</p>
+
+  <h3 class="sub">GitHub — Self-Hosting GitHub Actions</h3>
+  <p>GitHub uses GitHub Actions to build and deploy GitHub itself. They run their own self-hosted runners for compliance-sensitive deployments. Their CI pipeline for github.com includes:</p>
+  <ul class="plain">
+    <li>Tens of thousands of tests across Ruby, TypeScript, Go, and Rust</li>
+    <li>Rolling deployments to hundreds of servers using their internal deployment system</li>
+    <li>Feature flags (Flipper) for gradual rollouts to 100M+ users</li>
+    <li>Blue/green deployments for infrastructure changes</li>
+  </ul>
+
+  <!-- ══════════ 9 · FRAMEWORK ══════════ -->
+  <h2 class="sec" id="s9">9 · The Pipeline Design Framework</h2>
+
+  <div class="box bigidea"><span class="ic">🧠</span><div class="h">The 7 Questions Before Any Pipeline</div>
+  <p>A senior architect doesn't start writing YAML. They answer seven questions first:</p>
+  <ol style="margin:6px 0 0; padding-left:20px;">
+    <li><strong>Deployment target:</strong> Where does the artifact go? (K8s, ECS, serverless, VMs)</li>
+    <li><strong>Artifact type:</strong> Docker image? JAR? ZIP? Python wheel? (determines the build stage)</li>
+    <li><strong>Quality gates:</strong> What must be true before production? (determines gates)</li>
+    <li><strong>Secrets:</strong> What credentials does the pipeline need? Can OIDC eliminate them?</li>
+    <li><strong>Speed target:</strong> What feedback time is acceptable for a PR? (drives parallelism design)</li>
+    <li><strong>Failure handling:</strong> Auto-rollback on metric degradation? Manual approval for prod?</li>
+    <li><strong>Maintenance:</strong> Who owns this pipeline? Is it DRY (reusable workflow) or duplicated?</li>
+  </ol></div>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">Junior answer</div>
+      <p>"I'll set up GitHub Actions to run tests and deploy on push to main."</p>
+      <p>Immediately writes YAML without asking any questions about requirements.</p>
+    </div>
+    <div class="ba-col good">
+      <div class="label">Senior answer</div>
+      <p>"Let me clarify requirements first. What's the deployment target and frequency? Given K8s with 10+ deploys/day, I'd recommend: parallel Gate 1 (lint, unit tests, SAST) → Gate 2 (build + image scan) → Gate 3 (staging + smoke tests) → Gate 4 (canary prod via Argo Rollouts). OIDC for all cloud auth. Path filtering for monorepo scope. Concurrency groups. Target: &lt;8 minutes end-to-end."</p>
+    </div>
+  </div>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>Git is a content-addressed DAG — immutability and deduplication are emergent properties, not features</li>
+    <li>Branch strategy = blast-radius dial; match it to your deployment frequency and team size</li>
+    <li>CI/CD pipeline = quality gate assembly line; gates run in order of speed and cost</li>
+    <li>DORA metrics are the measurable outcome; pipeline speed is the input</li>
+    <li>OIDC eliminates long-lived credentials — aim for zero stored cloud credentials in CI</li>
+    <li>Reusable workflows are DRY applied to pipeline code — one change propagates to all services</li>
+    <li>Answer 7 questions before writing a single line of YAML</li>
+  </ul></div>
+
+</section>
+</body>
+</html>

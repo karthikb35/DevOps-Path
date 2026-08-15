@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jenkins — The DevOps Architect's Path, Book II</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book II · Edition 2026</div>
+    <h1>Jenkins</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">Controller-Agent architecture</strong> to <strong style="color:#8ff4ee">production-grade Shared Libraries</strong>. The enterprise CI/CD system that dominates regulated industries — understood deeply, not just used.</div>
+    <div class="stackrow">🔧 Controller · 🤖 Agents · 📜 Groovy · 📚 Libraries · 🔐 Security</div>
+    <div class="badges">
+      <span class="badge">🔧 Controller-Agent model</span><span class="badge">📜 Declarative pipelines</span>
+      <span class="badge">📚 Shared Libraries</span><span class="badge">🌿 Multi-branch</span>
+      <span class="badge">🔐 Vault integration</span><span class="badge">⚖️ Jenkins vs Actions</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Groovy DSL to production pipelines.</strong><br>Companion notebooks in <code style="color:#cfe0d6">02-jenkins/</code>.</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">Controller-Agent Architecture</div><div class="dd">The foreman-worker model · executors · connection protocols · HA</div></div><span class="ic">🔧</span></li>
+    <li><span class="n">2</span><div><div class="tt">Declarative vs Scripted Pipelines</div><div class="dd">Structure · when each · the hybrid approach</div></div><span class="ic">📜</span></li>
+    <li><span class="n">3</span><div><div class="tt">Jenkinsfile Best Practices</div><div class="dd">Parallel stages · timeouts · credentials · post actions</div></div><span class="ic">⚙️</span></li>
+    <li><span class="n">4</span><div><div class="tt">Shared Libraries — Enterprise DRY</div><div class="dd">vars/ · src/ · pipeline-in-a-function · versioning</div></div><span class="ic">📚</span></li>
+    <li><span class="n">5</span><div><div class="tt">Multi-Branch Pipelines</div><div class="dd">Branch auto-discovery · PR builds · Organisation folders</div></div><span class="ic">🌿</span></li>
+    <li><span class="n">6</span><div><div class="tt">Security — Vault, RBAC, Audit</div><div class="dd">HashiCorp Vault integration · role-based access · audit logging</div></div><span class="ic">🔐</span></li>
+    <li><span class="n">7</span><div><div class="tt">Jenkins vs GitHub Actions</div><div class="dd">When each wins · the hybrid model · migration strategy</div></div><span class="ic">⚖️</span></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">🔧</div>
+    <div><div class="t">Jenkins — Enterprise CI/CD at Scale</div>
+    <div class="s">The Controller-Agent architecture that powers pipelines in banks, aerospace, and healthcare</div></div>
+    <div class="ico">📜</div>
+  </div>
+
+  <p class="lead">Jenkins was created in 2004 (as Hudson) when CI/CD barely existed as a concept. Twenty years later, it remains the dominant CI system in regulated industries — not because it is the most modern tool, but because it is the most flexible, most self-hostable, and most extensible. Understanding Jenkins at the architectural level explains why large enterprises still choose it and how to use it well.</p>
+
+  <h2 class="sec" id="s1">1 · Controller-Agent Architecture</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Factory Floor</div>
+  <p>Jenkins is a factory: the <strong>Controller</strong> (foreman) schedules work and assigns it to <strong>Agents</strong> (workers). Agents are the machines where code actually runs. The Controller should <em>never</em> run build jobs — it is the brain, not the muscle. A Controller running builds is like a foreman doing all the welding: the factory doesn't scale and the foreman is always the bottleneck.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>The Jenkins Controller is the central server: it stores job configurations, build history, plugin state, and schedules work. Agents are machines (VMs, containers, physical servers) that the Controller connects to and dispatches build jobs. The Controller and agents communicate over JNLP, SSH, or WebSocket.</p></div>
+
+  <div class="def why"><span class="lab">Why the separation matters</span><p>When a Controller runs builds directly: resource exhaustion causes the Controller to crash, and <em>all CI stops</em> — every team's pipeline is down simultaneously. By offloading work to agents, a Controller crash affects scheduling but not in-progress builds. Agents can also be specialised (docker-capable, GPU, Windows) and scaled independently.</p></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 200" role="img" aria-label="Jenkins Controller-Agent architecture">
+      <defs><marker id="ja" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L5,3 L0,6 Z" fill="#0369a1"/></marker></defs>
+      <g font-family="Segoe UI,sans-serif">
+        <!-- Controller -->
+        <rect x="280" y="10" width="300" height="80" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+        <text x="430" y="35" text-anchor="middle" font-size="12" font-weight="800" fill="#92400e">Jenkins Controller</text>
+        <text x="430" y="52" text-anchor="middle" font-size="9" fill="#b45309">Job queue · Build history · Plugin manager</text>
+        <text x="430" y="66" text-anchor="middle" font-size="9" fill="#b45309">Scheduler · REST API · Web UI</text>
+        <text x="430" y="80" text-anchor="middle" font-size="8.5" font-weight="700" fill="#dc2626">❌ NEVER runs builds itself</text>
+        <!-- Agents -->
+        <rect x="20" y="130" width="155" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="97" y="152" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">VM Agent</text>
+        <text x="97" y="166" text-anchor="middle" font-size="8" fill="#3b5998">label: python-build</text>
+        <text x="97" y="179" text-anchor="middle" font-size="7.5" fill="#3b5998">4 executors · persistent</text>
+
+        <rect x="200" y="130" width="155" height="60" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="277" y="152" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">K8s Pod Agent</text>
+        <text x="277" y="166" text-anchor="middle" font-size="8" fill="#15803d">label: docker-build</text>
+        <text x="277" y="179" text-anchor="middle" font-size="7.5" fill="#15803d">ephemeral · scales to 0</text>
+
+        <rect x="380" y="130" width="155" height="60" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+        <text x="457" y="152" text-anchor="middle" font-size="9" font-weight="700" fill="#5b21b6">EC2 Agent</text>
+        <text x="457" y="166" text-anchor="middle" font-size="8" fill="#6d28d9">label: heavy-compile</text>
+        <text x="457" y="179" text-anchor="middle" font-size="7.5" fill="#6d28d9">spot instance · on-demand</text>
+
+        <rect x="560" y="130" width="155" height="60" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="637" y="152" text-anchor="middle" font-size="9" font-weight="700" fill="#713f12">Windows Agent</text>
+        <text x="637" y="166" text-anchor="middle" font-size="8" fill="#a16207">label: windows-test</text>
+        <text x="637" y="179" text-anchor="middle" font-size="7.5" fill="#a16207">WinRM connection</text>
+
+        <!-- Arrows -->
+        <path d="M380,90 L97,128" stroke="#0369a1" stroke-width="1.3" marker-end="url(#ja)" stroke-dasharray="5"/>
+        <path d="M400,90 L277,128" stroke="#0369a1" stroke-width="1.3" marker-end="url(#ja)" stroke-dasharray="5"/>
+        <path d="M450,90 L457,128" stroke="#0369a1" stroke-width="1.3" marker-end="url(#ja)" stroke-dasharray="5"/>
+        <path d="M490,90 L637,128" stroke="#0369a1" stroke-width="1.3" marker-end="url(#ja)" stroke-dasharray="5"/>
+        <text x="430" y="116" text-anchor="middle" font-size="8" fill="#0369a1">JNLP / SSH / WebSocket / K8s API</text>
+      </g>
+    </svg>
+    <figcaption>Figure 2.1 — Jenkins Controller dispatches work to specialised agents over JNLP, SSH, or WebSocket. Different agent types serve different workloads: persistent VMs for warm, frequent builds; K8s pods for elastic parallelism; EC2 spot instances for heavy compilation. The Controller never runs build code itself.</figcaption>
+  </figure>
+
+  <h2 class="sec" id="s2">2 · Declarative vs Scripted Pipelines</h2>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">Scripted (Groovy) — maximum power, maximum complexity</div>
+      <pre style="font-size:7.5pt"><span class="cmt">// Full Groovy — can do anything, but harder to validate</span>
+node(<span class="s">'python-build'</span>) {
+  stage(<span class="s">'Test'</span>) {
+    try {
+      sh <span class="s">'pytest tests/'</span>
+    } catch (e) {
+      currentBuild.result = <span class="s">'FAILURE'</span>
+      throw e
+    } finally {
+      junit <span class="s">'reports/*.xml'</span>
+    }
+  }
+}</pre>
+    </div>
+    <div class="ba-col good">
+      <div class="label">Declarative — structured, validated, recommended</div>
+      <pre style="font-size:7.5pt"><span class="cmt">// Validated by Jenkins; safer and more readable</span>
+pipeline {
+  agent { label <span class="s">'python-build'</span> }
+  stages {
+    stage(<span class="s">'Test'</span>) {
+      steps { sh <span class="s">'pytest tests/'</span> }
+      post {
+        always { junit <span class="s">'reports/*.xml'</span> }
+      }
+    }
+  }
+}</pre>
+    </div>
+  </div>
+
+  <h2 class="sec" id="s4">4 · Shared Libraries — Enterprise DRY</h2>
+
+  <div class="box bigidea"><span class="ic">💡</span><div class="h">The Pipeline-in-a-Function Pattern</div>
+  <p>The highest-leverage use of Shared Libraries is the <strong>pipeline-in-a-function</strong> pattern: the platform team writes a complete opinionated pipeline as a function in <code class="inl">vars/</code>. Each product team's Jenkinsfile calls that function with service-specific parameters. One function update propagates to all services. A product team's Jenkinsfile becomes three lines:</p></div>
+
+  <pre><span class="cmt">// Product team's entire Jenkinsfile:</span>
+@Library(<span class="s">'company-lib@main'</span>) _
+pythonMicroservicePipeline(
+  serviceName: <span class="s">'payment-service'</span>,
+  requiresApproval: true,
+  slackChannel: <span class="s">'#payments-deploys'</span>
+)</pre>
+
+  <pre><span class="cmt">// vars/pythonMicroservicePipeline.groovy (platform team maintains this)</span>
+def call(Map config = [:]) {
+  def name = config.serviceName ?: error(<span class="s">'serviceName required'</span>)
+
+  pipeline {
+    agent { label <span class="s">'python-build'</span> }
+    options {
+      timeout(time: 30, unit: <span class="s">'MINUTES'</span>)
+      buildDiscarder(logRotator(numToKeepStr: <span class="s">'30'</span>))
+      disableConcurrentBuilds(abortPrevious: true)
+    }
+    stages {
+      stage(<span class="s">'Quality Gate'</span>) {
+        parallel {
+          stage(<span class="s">'Lint'</span>)     { steps { runLint() } }
+          stage(<span class="s">'Tests'</span>)    { steps { runPytests(name) } }
+          stage(<span class="s">'Security'</span>) { steps { runSecurityScan() } }
+        }
+      }
+      stage(<span class="s">'Build'</span>)  { steps { buildDockerImage(name) } }
+      stage(<span class="s">'Deploy'</span>) {
+        when { branch <span class="s">'main'</span> }
+        steps { deployToK8s(name, config.requiresApproval) }
+      }
+    }
+    post {
+      failure { notifySlack(config.slackChannel, <span class="s">'FAILED'</span>) }
+      always  { cleanWs() }
+    }
+  }
+}</pre>
+
+  <h2 class="sec" id="s7">7 · Jenkins vs GitHub Actions</h2>
+
+  <table>
+    <tr><th>Dimension</th><th>Jenkins</th><th>GitHub Actions</th></tr>
+    <tr><td>Hosting</td><td>Self-hosted (you manage)</td><td>Cloud-hosted (GitHub manages)</td></tr>
+    <tr><td>On-premises builds</td><td>✅ Native</td><td>⚠️ Self-hosted runners only</td></tr>
+    <tr><td>Compliance / air-gap</td><td>✅ Full control</td><td>⚠️ Requires self-hosted</td></tr>
+    <tr><td>Maintenance burden</td><td>High (upgrades, plugins)</td><td>Zero (managed)</td></tr>
+    <tr><td>Pipeline language</td><td>Groovy DSL (powerful)</td><td>YAML (simple, limited)</td></tr>
+    <tr><td>Marketplace</td><td>1,800+ plugins</td><td>20,000+ actions</td></tr>
+    <tr><td>Cost (private repos)</td><td>Infra cost</td><td>Per-minute pricing</td></tr>
+    <tr><td>Best for</td><td>Regulated industries, existing investment</td><td>New projects, cloud-native</td></tr>
+  </table>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: The Hybrid Model at a Global Bank</div>
+  <p>A top-5 global bank runs both Jenkins and GitHub Actions. Jenkins handles: core banking pipelines (builds must stay on-prem, compliance audit trail mandatory, HSM integration for signing), deployment to regulated environments (production approvals logged to immutable audit systems). GitHub Actions handles: developer tools, internal dashboards, documentation builds, open-source contributions. The architectural principle: use GitHub Actions where self-service speed matters; use Jenkins where compliance and on-premises control are non-negotiable. The two systems share the same Shared Library pattern — the bank maintains a GitHub Actions reusable workflow library with the same API as their Jenkins Shared Library, minimising cognitive switching cost for engineers who work on both sides.</p></div>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>Controller is the brain; agents are the muscles — never run builds on the Controller</li>
+    <li>Declarative pipelines by default; Scripted only for dynamic logic Declarative can't express</li>
+    <li>Shared Library + pipeline-in-a-function = DRY pipelines; platform team updates one file, all services benefit</li>
+    <li>Multi-branch pipelines auto-discover feature branches and PRs — no manual job creation</li>
+    <li>Vault integration eliminates long-lived Jenkins Credentials — dynamic, short-lived secrets per build</li>
+    <li>Jenkins wins on compliance, on-prem, and complex Groovy pipelines; Actions wins on simplicity and managed infra</li>
+  </ul></div>
+
+</section>
+</body>
+</html>

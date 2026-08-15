@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kubernetes — The DevOps Architect's Path, Book IV</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book IV · Edition 2026</div>
+    <h1>Kubernetes</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">the reconciliation loop</strong> to <strong style="color:#8ff4ee">production-grade cluster design</strong>. The desired-state engine that runs containers at scale — understood from etcd to the Pod's security context.</div>
+    <div class="stackrow">☸️ Control plane · 🔄 Reconciliation · 🌐 Services · 📈 HPA · 🔐 RBAC</div>
+    <div class="badges">
+      <span class="badge">☸️ Control plane architecture</span><span class="badge">🔄 Desired-state model</span>
+      <span class="badge">🌐 Services &amp; Ingress</span><span class="badge">📈 HPA &amp; scaling</span>
+      <span class="badge">🔐 RBAC &amp; Network Policy</span><span class="badge">🚀 Rolling deploys</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Self-healing in production, explained.</strong><br>Companion notebooks in <code style="color:#cfe0d6">04-kubernetes/</code>.</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">The Desired-State Mental Model</div><div class="dd">The reconciliation loop · the controller pattern · self-healing</div></div><span class="ic">🔄</span></li>
+    <li><span class="n">2</span><div><div class="tt">Control Plane vs Data Plane</div><div class="dd">kube-apiserver · etcd · scheduler · kubelet · kube-proxy</div></div><span class="ic">☸️</span></li>
+    <li><span class="n">3</span><div><div class="tt">Core Objects — Pod to Deployment</div><div class="dd">Pod · ReplicaSet · Deployment · Service · ConfigMap · Secret</div></div><span class="ic">📦</span></li>
+    <li><span class="n">4</span><div><div class="tt">Health Probes — The Most Misused Feature</div><div class="dd">startupProbe · readinessProbe · livenessProbe · failure modes</div></div><span class="ic">❤️</span></li>
+    <li><span class="n">5</span><div><div class="tt">Networking — Services, Ingress, DNS</div><div class="dd">ClusterIP · NodePort · LoadBalancer · Ingress controller · kube-dns</div></div><span class="ic">🌐</span></li>
+    <li><span class="n">6</span><div><div class="tt">Resource Management &amp; HPA</div><div class="dd">Requests · limits · QoS classes · HPA · VPA</div></div><span class="ic">📈</span></li>
+    <li><span class="n">7</span><div><div class="tt">Security — RBAC, Network Policy, Pod Security</div><div class="dd">Least privilege · zero-trust networking · runAsNonRoot</div></div><span class="ic">🔐</span></li>
+    <li><span class="n">8</span><div><div class="tt">Deployment Strategies</div><div class="dd">RollingUpdate · Blue/Green · Canary (Argo Rollouts)</div></div><span class="ic">🚀</span></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">☸️</div>
+    <div><div class="t">Kubernetes — The Desired-State Orchestrator</div>
+    <div class="s">Tell it WHAT you want, and it continuously works to make the cluster match your declaration</div></div>
+    <div class="ico">🔄</div>
+  </div>
+
+  <p class="lead">Kubernetes is not a deployment tool. It is a <strong>desired-state reconciliation engine</strong>. You declare what you want — "3 replicas of this container image" — and Kubernetes continuously monitors the cluster and takes actions to match that declaration. If a node fails, it reschedules. If a pod crashes, it restarts. If you change the desired replicas to 5, it starts 2 more. You never tell Kubernetes <em>how</em> to do anything — you tell it <em>what you want</em>.</p>
+
+  <h2 class="sec" id="s1">1 · The Desired-State Mental Model</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Thermostat</div>
+  <p>A thermostat is a desired-state controller. You set the desired temperature (22°C). The thermostat observes the actual temperature. If actual &lt; desired: turn on heat. If actual &gt; desired: turn on cooling. It runs this loop forever, autonomously, without you telling it to "please heat the room now." Kubernetes works the same way: desired state in YAML, actual state in the cluster, reconciliation loop running every few seconds.</p></div>
+
+  <div class="def how"><span class="lab">How — The Reconciliation Loop (in pseudocode)</span>
+  <pre><span class="cmt"># Every Kubernetes controller implements this exact pattern</span>
+<span class="k">while</span> True:
+    desired = read_from_api_server()   <span class="cmt"># what you declared in YAML</span>
+    actual  = observe_the_cluster()    <span class="cmt"># what's actually running</span>
+
+    <span class="k">if</span> desired != actual:
+        reconcile(desired, actual)     <span class="cmt"># create/update/delete resources</span>
+
+    sleep(reconcile_interval)          <span class="cmt"># typically 5-30 seconds</span></pre>
+  <p>Every built-in Kubernetes resource has a controller implementing this loop: <strong>ReplicaSet controller</strong> (maintains pod count), <strong>Deployment controller</strong> (manages ReplicaSets for rolling updates), <strong>Endpoints controller</strong> (keeps Service backends current), <strong>Node controller</strong> (evicts pods from failed nodes), <strong>HPA controller</strong> (scales Deployments on metrics).</p></div>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: Dropbox — Self-Healing at 2 AM</div>
+  <p>A hardware failure took down an entire rack at Dropbox at 2 AM. No engineer woke up. Kubernetes detected node failures via missed heartbeats (default: 5 minutes), marked nodes <code class="inl">NotReady</code>, and rescheduled all affected pods to healthy nodes — automatically, in under 3 minutes. The on-call engineer acknowledged the alert, confirmed the system had recovered, and created a ticket for hardware replacement. Total engineer time: 5 minutes. <strong>Without Kubernetes:</strong> SSH into each server, manually restart services, update load balancer configs, verify each service — 45-minute incident at 2 AM.</p></div>
+
+  <h2 class="sec" id="s2">2 · Control Plane vs Data Plane</h2>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 230" role="img" aria-label="Kubernetes architecture">
+      <defs><marker id="ka" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L5,3 L0,6 Z" fill="#326ce5"/></marker></defs>
+      <g font-family="Segoe UI,sans-serif">
+        <!-- Control Plane -->
+        <rect x="5" y="5" width="550" height="100" rx="10" fill="#eff6ff" stroke="#326ce5" stroke-width="2"/>
+        <text x="280" y="22" text-anchor="middle" font-size="11" font-weight="800" fill="#1e40af">CONTROL PLANE (brain)</text>
+        <rect x="15" y="28" width="120" height="68" rx="7" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="75" y="48" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">kube-apiserver</text>
+        <text x="75" y="62" text-anchor="middle" font-size="7.5" fill="#3b5998">All cluster ops</text>
+        <text x="75" y="74" text-anchor="middle" font-size="7.5" fill="#3b5998">go through here</text>
+        <text x="75" y="86" text-anchor="middle" font-size="7.5" fill="#3b5998">RESTful · validates</text>
+
+        <rect x="143" y="28" width="100" height="68" rx="7" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="193" y="48" text-anchor="middle" font-size="9" font-weight="700" fill="#713f12">etcd</text>
+        <text x="193" y="62" text-anchor="middle" font-size="7.5" fill="#92400e">All cluster state</text>
+        <text x="193" y="74" text-anchor="middle" font-size="7.5" fill="#92400e">Distributed KV</text>
+        <text x="193" y="86" text-anchor="middle" font-size="7.5" fill="#dc2626">⚠️ Backup this</text>
+
+        <rect x="251" y="28" width="100" height="68" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="301" y="48" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">scheduler</text>
+        <text x="301" y="62" text-anchor="middle" font-size="7.5" fill="#16a34a">Assigns pods</text>
+        <text x="301" y="74" text-anchor="middle" font-size="7.5" fill="#16a34a">to nodes</text>
+        <text x="301" y="86" text-anchor="middle" font-size="7.5" fill="#16a34a">bin-packing</text>
+
+        <rect x="359" y="28" width="100" height="68" rx="7" fill="#ede9fe" stroke="#7c3aed"/>
+        <text x="409" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#5b21b6">controller</text>
+        <text x="409" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#5b21b6">manager</text>
+        <text x="409" y="70" text-anchor="middle" font-size="7.5" fill="#6d28d9">ReplicaSet,</text>
+        <text x="409" y="82" text-anchor="middle" font-size="7.5" fill="#6d28d9">Deployment, Node</text>
+
+        <rect x="467" y="28" width="80" height="68" rx="7" fill="#fce7f3" stroke="#db2777"/>
+        <text x="507" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#be185d">cloud</text>
+        <text x="507" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#be185d">controller</text>
+        <text x="507" y="70" text-anchor="middle" font-size="7.5" fill="#db2777">LBs, disks</text>
+        <text x="507" y="82" text-anchor="middle" font-size="7.5" fill="#db2777">AWS/GCP/Azure</text>
+
+        <!-- API connection line -->
+        <path d="M280,105 L280,130" stroke="#326ce5" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#ka)"/>
+        <text x="295" y="120" font-size="8" fill="#326ce5">HTTPS API</text>
+
+        <!-- Data Plane / Worker Nodes -->
+        <rect x="5" y="135" width="850" height="90" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+        <text x="430" y="152" text-anchor="middle" font-size="11" font-weight="800" fill="#15803d">DATA PLANE — Worker Nodes (muscles)</text>
+
+        <!-- Node 1 -->
+        <rect x="15" y="158" width="260" height="60" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="145" y="174" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">node-1</text>
+        <rect x="20" y="178" width="70" height="34" rx="5" fill="#fff"/><text x="55" y="192" text-anchor="middle" font-size="7.5" fill="#374151">kubelet</text><text x="55" y="205" text-anchor="middle" font-size="7" fill="#6b7280">node agent</text>
+        <rect x="96" y="178" width="70" height="34" rx="5" fill="#fff"/><text x="131" y="192" text-anchor="middle" font-size="7.5" fill="#374151">kube-proxy</text><text x="131" y="205" text-anchor="middle" font-size="7" fill="#6b7280">iptables/eBPF</text>
+        <rect x="172" y="178" width="95" height="34" rx="5" fill="#dbeafe"/><text x="219" y="192" text-anchor="middle" font-size="7.5" fill="#1e40af">Pod·Pod·Pod</text><text x="219" y="205" text-anchor="middle" font-size="7" fill="#3b5998">containerd</text>
+
+        <!-- Node 2 -->
+        <rect x="285" y="158" width="260" height="60" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="415" y="174" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">node-2</text>
+        <rect x="290" y="178" width="70" height="34" rx="5" fill="#fff"/><text x="325" y="192" text-anchor="middle" font-size="7.5" fill="#374151">kubelet</text><text x="325" y="205" text-anchor="middle" font-size="7" fill="#6b7280">node agent</text>
+        <rect x="366" y="178" width="70" height="34" rx="5" fill="#fff"/><text x="401" y="192" text-anchor="middle" font-size="7.5" fill="#374151">kube-proxy</text><text x="401" y="205" text-anchor="middle" font-size="7" fill="#6b7280">iptables/eBPF</text>
+        <rect x="442" y="178" width="95" height="34" rx="5" fill="#dbeafe"/><text x="489" y="192" text-anchor="middle" font-size="7.5" fill="#1e40af">Pod·Pod</text><text x="489" y="205" text-anchor="middle" font-size="7" fill="#3b5998">containerd</text>
+
+        <!-- Node 3 -->
+        <rect x="555" y="158" width="295" height="60" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="702" y="174" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">node-3 (new — autoscaled)</text>
+        <rect x="560" y="178" width="70" height="34" rx="5" fill="#fff"/><text x="595" y="192" text-anchor="middle" font-size="7.5" fill="#374151">kubelet</text><text x="595" y="205" text-anchor="middle" font-size="7" fill="#6b7280">node agent</text>
+        <rect x="636" y="178" width="70" height="34" rx="5" fill="#fff"/><text x="671" y="192" text-anchor="middle" font-size="7.5" fill="#374151">kube-proxy</text><text x="671" y="205" text-anchor="middle" font-size="7" fill="#6b7280">iptables/eBPF</text>
+        <rect x="712" y="178" width="130" height="34" rx="5" fill="#dbeafe"/><text x="777" y="192" text-anchor="middle" font-size="7.5" fill="#1e40af">Pod·Pod·Pod·Pod</text><text x="777" y="205" text-anchor="middle" font-size="7" fill="#3b5998">containerd</text>
+      </g>
+    </svg>
+    <figcaption>Figure 4.1 — Kubernetes control plane (brain) vs worker nodes (muscles). The kube-apiserver is the single gateway — all state changes go through it to etcd. Worker nodes run kubelet (talks to API server, manages pods), kube-proxy (network routing), and containerd (runs containers). The control plane makes decisions; worker nodes execute them.</figcaption>
+  </figure>
+
+  <div class="box pitfall"><span class="ic">🚨</span><div class="h">etcd is the single most critical component — treat it accordingly</div>
+  <p>etcd stores every Kubernetes object, every RBAC rule, every secret. If etcd is lost and you have no backup: your cluster is effectively gone. Running pods keep running (kubelet doesn't need etcd for already-running pods), but no new scheduling can happen, no healing, no config changes. <strong>Production requirements:</strong> (1) etcd cluster of 3 or 5 nodes (odd for quorum), (2) SSD storage (etcd is I/O-sensitive — HDD = leader election failures under load), (3) automated backups with <code class="inl">etcdctl snapshot save</code> every 15 minutes to an offsite location, (4) separate nodes from worker nodes (noisy neighbours crash etcd). EKS/GKE/AKS handle etcd for you — a strong argument for managed K8s.</p></div>
+
+  <h2 class="sec" id="s4">4 · Health Probes — The Most Misused Feature</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Three Different Doctors</div>
+  <p>Three doctors check your health for different purposes. The <strong>startup doctor</strong> checks if you're awake after surgery — don't move you until you're conscious. The <strong>readiness doctor</strong> clears you to receive visitors — your room is only listed as available when you can actually host guests. The <strong>liveness doctor</strong> checks if you're responsive — if you're unresponsive, call a code. Each has a different response to failure.</p></div>
+
+  <table>
+    <tr><th>Probe</th><th>Question</th><th>On failure</th><th>Common mistake</th></tr>
+    <tr><td><strong>startupProbe</strong></td><td>Is the app done starting?</td><td>Keep waiting (up to failureThreshold × period)</td><td>Not setting it — liveness kills slow-starting apps</td></tr>
+    <tr><td><strong>readinessProbe</strong></td><td>Ready to receive traffic?</td><td>Remove from Service endpoints (no traffic)</td><td>Checking DB connectivity — DB outage takes all pods unready simultaneously</td></tr>
+    <tr><td><strong>livenessProbe</strong></td><td>Is the app stuck/deadlocked?</td><td>Kill and restart the pod</td><td>Same as readiness — all pods restart simultaneously on DB outage = cascading failure</td></tr>
+  </table>
+
+  <pre><span class="cmt"># ✅ CORRECT: three probes, each doing exactly its job</span>
+<span class="k">startupProbe</span>:          <span class="cmt"># ← waits for slow-starting JVM app (up to 5min)</span>
+  httpGet: { path: /health, port: 8080 }
+  failureThreshold: 30
+  periodSeconds: 10      <span class="cmt"># 30 × 10s = 5 minutes max startup window</span>
+
+<span class="k">readinessProbe</span>:        <span class="cmt"># ← traffic control (DB check OK here)</span>
+  httpGet: { path: /ready, port: 8080 }
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+<span class="k">livenessProbe</span>:         <span class="cmt"># ← deadlock detection ONLY (NO DB check!)</span>
+  httpGet: { path: /health, port: 8080 }
+  initialDelaySeconds: 60  <span class="cmt"># longer than startupProbe max</span>
+  periodSeconds: 20
+  failureThreshold: 3</pre>
+
+  <h2 class="sec" id="s8">8 · Deployment Strategies</h2>
+
+  <div class="def what"><span class="lab">What — Rolling Update</span><p>Kubernetes default. Replace pods one by one (or in batches) with the new version. <code class="inl">maxUnavailable</code> pods can be down at once; <code class="inl">maxSurge</code> extra pods can run above desired count. The pipeline: new pod starts → passes readiness probe → old pod removed. Zero-downtime if readiness is configured correctly.</p></div>
+
+  <div class="def what"><span class="lab">What — Canary (Argo Rollouts)</span><p>Route a small percentage of traffic to the new version. Observe metrics (error rate, latency) for a defined period. If metrics are within bounds: promote to 100%. If metrics degrade: auto-rollback. Argo Rollouts integrates with Prometheus/Datadog for automated analysis gates. This is Netflix's default deployment model.</p></div>
+
+  <pre><span class="cmt"># Argo Rollouts canary with automated analysis</span>
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+spec:
+  strategy:
+    canary:
+      steps:
+      - setWeight: 5       <span class="cmt"># 5% traffic to new version</span>
+      - pause: { duration: 10m }   <span class="cmt"># observe for 10 minutes</span>
+      - analysis:          <span class="cmt"># ← automated metric check</span>
+          templates: [{ templateName: success-rate }]
+      - setWeight: 50      <span class="cmt"># 50% if analysis passed</span>
+      - pause: { duration: 5m }
+      - setWeight: 100     <span class="cmt"># full rollout</span></pre>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>Kubernetes is a reconciliation engine — you declare desired state, it continuously makes it real</li>
+    <li>etcd is the most critical component — back it up, put it on SSDs, use managed K8s in production</li>
+    <li>readinessProbe controls traffic; livenessProbe controls restarts — NEVER check DB in livenessProbe</li>
+    <li>Resources requests and limits are required — BestEffort pods are evicted first under pressure</li>
+    <li>Services discover pods by label selectors — understand this to debug any networking issue</li>
+    <li>Canary deployments with automated metric gates (Argo Rollouts) are the elite deployment strategy</li>
+  </ul></div>
+</section>
+</body>
+</html>

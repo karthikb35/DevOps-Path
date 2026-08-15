@@ -1,0 +1,199 @@
+/* ===================== PAGE SETUP ===================== */
+@page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+@page :first { margin: 0; }
+
+:root{
+  --navy:#0c2340; --navy2:#133766; --ink:#1a2733; --muted:#556070;
+  --teal:#0ea5a4; --teal-d:#0b7d7c; --amber:#f59e0b; --red:#dc2626;
+  --green:#16a34a; --violet:#7c3aed; --sky:#0284c7; --orange:#ea580c;
+  --paper:#ffffff; --soft:#f4f7fb; --line:#dbe4ee;
+  --code-bg:#0c2340; --code-ink:#e4edf6;
+  /* DevOps accent colours */
+  --git:#f05133; --docker:#2496ed; --k8s:#326ce5; --ansible:#ee0000;
+  --terraform:#7b42bc; --jenkins:#d33833; --obs:#e6522c;
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family:"Georgia","Cambria",serif;
+  color:var(--ink); font-size:10.6pt; line-height:1.64;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+h1,h2,h3,h4,.ui{ font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif; }
+code,pre,.mono{ font-family:"Cascadia Code","Cascadia Mono","Consolas",monospace; }
+
+/* ===================== COVER ===================== */
+.cover{
+  min-height:100vh; color:#eaf2fb; padding:28mm 24mm;
+  background:
+    radial-gradient(1200px 500px at 80% -5%, rgba(50,108,229,.35), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(14,165,164,.35), transparent 55%),
+    linear-gradient(150deg,#071524 0%, #0c2340 45%, #112f5a 100%);
+  display:flex; flex-direction:column; justify-content:space-between;
+}
+.cover .kicker{ font-family:"Segoe UI",sans-serif; letter-spacing:.26em;
+  text-transform:uppercase; font-size:10.5pt; color:#7fe3e2; font-weight:700; }
+.cover h1{ font-size:44pt; line-height:1.03; margin:14px 0 6px; font-weight:800;
+  background:linear-gradient(90deg,#ffffff,#b9d8ff 60%,#8ff4ee);
+  -webkit-background-clip:text; background-clip:text; color:transparent; }
+.cover .sub{ font-family:"Segoe UI",sans-serif; font-size:14pt; color:#c7d7ea; max-width:74%; }
+.cover .badges{ display:flex; gap:9px; margin-top:20px; flex-wrap:wrap; }
+.cover .badge{ font-family:"Segoe UI",sans-serif; font-size:9.5pt; font-weight:600;
+  padding:6px 13px; border-radius:999px; background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.22); color:#dcecff; }
+.cover .foot{ font-family:"Segoe UI",sans-serif; display:flex; justify-content:space-between;
+  align-items:flex-end; color:#9fb6d0; font-size:9.5pt; border-top:1px solid rgba(255,255,255,.15);
+  padding-top:14px; }
+.cover .stackrow{ display:flex; gap:22px; align-items:center; margin-top:10px; font-size:20pt; }
+
+/* ===================== TABLE OF CONTENTS ===================== */
+.toc{ padding:14mm 0 10mm; break-after:page; }
+.toc h2{ font-size:18pt; color:var(--navy); margin:0 0 8px; }
+.toc .rule{ height:3px; background:linear-gradient(90deg,var(--teal),var(--sky),transparent); border:none; margin:0 0 14px; }
+.toc .small{ color:var(--muted); font-size:9.5pt; margin-bottom:14px; }
+.toc ol{ list-style:none; margin:0; padding:0; counter-reset:toc; }
+.toc ol li{ display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
+.toc ol li .n{ font-family:"Segoe UI",sans-serif; font-weight:800; color:var(--teal-d); min-width:24px; font-size:10.5pt; }
+.toc ol li .tt{ font-family:"Segoe UI",sans-serif; font-weight:700; font-size:10.5pt; color:var(--navy); }
+.toc ol li .dd{ font-size:9pt; color:var(--muted); margin-top:2px; }
+.toc ol li .ic{ font-size:14pt; margin-left:auto; }
+.toc .subitems{ font-size:9pt; color:var(--muted); margin-top:14px; padding:10px 14px;
+  background:var(--soft); border-radius:10px; border-left:4px solid var(--teal); }
+
+/* ===================== HEADINGS ===================== */
+.chapter{ break-before:page; }
+.ch-head{ display:flex; align-items:center; gap:18px; padding:16px 18px; border-radius:14px;
+  color:#fff; margin:0 0 16px; break-after:avoid;
+  background:linear-gradient(120deg,var(--navy),var(--navy2)); }
+.ch-head .num{ font-family:"Segoe UI",sans-serif; font-weight:800; font-size:24pt;
+  width:60px; height:60px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); }
+.ch-head .t{ font-size:19pt; font-weight:800; line-height:1.1; }
+.ch-head .s{ font-family:"Segoe UI",sans-serif; font-size:10pt; color:#bcd4ee; margin-top:3px; }
+.ch-head .ico{ font-size:28pt; margin-left:auto; }
+
+h2.sec{ font-size:14pt; color:var(--navy); margin:22px 0 8px;
+  padding-bottom:6px; border-bottom:2px solid var(--line); break-after:avoid; }
+h3.sub{ font-size:11.5pt; color:var(--navy2); margin:16px 0 6px; break-after:avoid; }
+h4.mini{ font-size:10.5pt; color:var(--navy2); margin:12px 0 4px; break-after:avoid; }
+p{ margin:8px 0; }
+a{ color:var(--teal-d); text-decoration:none; }
+strong{ color:#0d2240; }
+em.term{ font-style:normal; font-weight:700; color:var(--teal-d); }
+.lead{ font-size:11.5pt; color:#334; }
+
+/* ===================== WHAT/WHY/HOW/WHEN ===================== */
+.def{ border-left:5px solid var(--line); background:var(--soft); border-radius:0 10px 10px 0;
+  padding:10px 14px 10px 16px; margin:10px 0; break-inside:avoid; }
+.def .lab{ font-family:"Segoe UI",sans-serif; font-weight:800; font-size:8.5pt; letter-spacing:.06em;
+  text-transform:uppercase; display:inline-block; padding:2px 10px; border-radius:999px; color:#fff; margin-bottom:4px; }
+.def.what{ border-color:var(--sky); background:#f2f9ff; } .def.what .lab{ background:var(--sky); }
+.def.why{ border-color:var(--teal); background:#f0fbfa; } .def.why .lab{ background:var(--teal-d); }
+.def.how{ border-color:var(--violet); background:#f8f6ff; } .def.how .lab{ background:var(--violet); }
+.def.when{ border-color:var(--amber); background:#fffaf1; } .def.when .lab{ background:#b45309; }
+.def p{ margin:4px 0; }
+
+/* ===================== CALLOUTS ===================== */
+.box{ border-radius:12px; padding:12px 15px 12px 46px; margin:14px 0; position:relative;
+  break-inside:avoid; border:1px solid var(--line); background:var(--soft); }
+.box .ic{ position:absolute; left:13px; top:11px; font-size:15pt; }
+.box .h{ font-family:"Segoe UI",sans-serif; font-weight:700; font-size:10pt;
+  text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.box p{ margin:4px 0; }
+.bigidea{ background:linear-gradient(90deg,#eefcfb,#f6fffe); border-color:#b7ece9; }
+.bigidea .h{ color:var(--teal-d); }
+.insight{ background:linear-gradient(90deg,#eefaf0,#f6fef9); border-color:#bfe8ca; }
+.insight .h{ color:var(--green); }
+.gotcha{ background:linear-gradient(90deg,#fff6ed,#fffaf3); border-color:#f6d6a8; }
+.gotcha .h{ color:#b45309; }
+.pitfall{ background:linear-gradient(90deg,#fdecec,#fff5f5); border-color:#f4bcbc; }
+.pitfall .h{ color:var(--red); }
+.analogy{ background:linear-gradient(90deg,#f2effd,#faf8ff); border-color:#d9cdf6; }
+.analogy .h{ color:var(--violet); }
+.scenario{ background:linear-gradient(90deg,#eaf7ff,#f5fbff); border-color:#b3dff5; }
+.scenario .h{ color:#0369a1; }
+.takeaway{ background:linear-gradient(90deg,#f0fdf4,#f8fff9); border-color:#bbf7d0; }
+.takeaway .h{ color:#15803d; font-size:11pt; }
+.compare{ background:linear-gradient(90deg,#fefce8,#fffff5); border-color:#fde68a; }
+.compare .h{ color:#92400e; }
+
+/* ===================== BEFORE/AFTER ===================== */
+.ba{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; break-inside:avoid; }
+.ba-col{ border-radius:10px; padding:10px 12px; border:1px solid var(--line); }
+.ba-col .label{ font-family:"Segoe UI",sans-serif; font-weight:800; font-size:9pt; margin-bottom:6px; }
+.ba-col.bad{ background:#fff5f5; border-color:#fca5a5; }
+.ba-col.bad .label{ color:var(--red); }
+.ba-col.bad .label::before{ content:"❌  "; }
+.ba-col.good{ background:#f0fdf4; border-color:#86efac; }
+.ba-col.good .label{ color:var(--green); }
+.ba-col.good .label::before{ content:"✅  "; }
+
+/* ===================== TOOL BADGES ===================== */
+.tool-git  { color:var(--git); font-weight:700; }
+.tool-docker{ color:var(--docker); font-weight:700; }
+.tool-k8s  { color:var(--k8s); font-weight:700; }
+.tool-ansible{ color:var(--ansible); font-weight:700; }
+.tool-tf   { color:var(--terraform); font-weight:700; }
+.tool-jenkins{ color:var(--jenkins); font-weight:700; }
+
+/* ===================== QA ===================== */
+.qa{ border-left:4px solid var(--sky); padding:8px 12px; margin:10px 0; break-inside:avoid; background:#f8fbff; border-radius:0 8px 8px 0; }
+.qa .q{ font-family:"Segoe UI",sans-serif; font-weight:700; font-size:10pt; color:var(--navy); margin-bottom:4px; }
+
+/* ===================== LISTS ===================== */
+ul.tick,ul.plain{ list-style:none; padding-left:0; margin:8px 0; }
+ul.tick li{ padding-left:24px; position:relative; margin:5px 0; }
+ul.tick li:before{ content:"✓"; position:absolute; left:0; color:var(--green); font-weight:800; }
+ul.cross li:before{ content:"✕"; color:var(--red); }
+ul.plain li{ padding-left:20px; position:relative; margin:5px 0; }
+ul.plain li:before{ content:"▸"; position:absolute; left:2px; color:var(--teal-d); }
+dl.gloss{ margin:8px 0; }
+dl.gloss dt{ font-family:"Segoe UI",sans-serif; font-weight:700; color:var(--navy2); margin-top:8px; }
+dl.gloss dd{ margin:2px 0 2px 0; }
+
+/* ===================== CODE ===================== */
+pre{ background:var(--code-bg); color:var(--code-ink); border-radius:10px; padding:12px 14px;
+  font-size:8.7pt; line-height:1.5; overflow:hidden; break-inside:avoid; margin:12px 0;
+  border:1px solid #1a3d6a; }
+pre .c{ color:#7fa7c9; font-style:italic; }
+pre .k{ color:#7fe3e2; } pre .s{ color:#ffd79a; } pre .f{ color:#c3a6ff; } pre .n{ color:#ffb4a2; }
+pre .cmt{ color:#5a7d9f; font-style:italic; }
+pre .ok{ color:#86efac; } pre .err{ color:#fca5a5; }
+code.inl{ background:#eef2f7; color:#12345a; padding:1px 6px; border-radius:5px; font-size:9pt; }
+
+/* ===================== TABLES ===================== */
+table{ width:100%; border-collapse:collapse; font-size:9.5pt; margin:12px 0; break-inside:avoid; }
+th{ background:var(--navy); color:#e8f0fb; font-family:"Segoe UI",sans-serif; font-weight:700;
+  padding:8px 10px; text-align:left; }
+td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:nth-child(even) td{ background:var(--soft); }
+tr:last-child td{ border-bottom:none; }
+
+/* ===================== FIGURES ===================== */
+figure.fig-card{ border:1px solid var(--line); border-radius:12px; padding:14px 14px 10px;
+  margin:16px 0; break-inside:avoid; background:#fafcff; }
+figure.fig-card svg{ width:100%; height:auto; display:block; }
+figcaption{ font-size:9pt; color:var(--muted); margin-top:8px; font-style:italic; }
+
+/* ===================== CODEREF CALLOUT ===================== */
+.coderef{ background:#f0f6ff; border:1px solid #bfd6f5; border-radius:10px; padding:10px 14px;
+  font-size:9pt; margin:12px 0; break-inside:avoid; }
+.coderef .h{ font-family:"Segoe UI",sans-serif; font-weight:700; color:var(--navy); margin-bottom:6px; }
+.coderef .path{ font-family:"Cascadia Code","Consolas",monospace; background:#e8f0fa;
+  padding:1px 5px; border-radius:4px; font-size:8.5pt; color:#1a3a6a; }
+.coderef ul{ margin:4px 0; padding-left:18px; }
+.coderef li{ margin:4px 0; }
+
+/* ===================== PIPELINE FLOW ===================== */
+.flow{ display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin:10px 0; }
+.flow-box{ background:var(--navy); color:#e0eeff; font-family:"Segoe UI",sans-serif;
+  font-size:9pt; font-weight:600; padding:5px 10px; border-radius:6px; }
+.flow-box.gate{ background:var(--teal-d); }
+.flow-box.deploy{ background:var(--green); }
+.flow-box.fail{ background:var(--red); }
+.flow-arr{ color:var(--muted); font-size:11pt; }
+
+/* ===================== ARCHITECTURE DIAGRAM HELPERS ===================== */
+.arch{ background:#f8fafc; border:1px solid var(--line); border-radius:12px; padding:14px;
+  margin:14px 0; break-inside:avoid; }
+.arch svg{ width:100%; }

@@ -1,0 +1,86 @@
+name: GitHub Pages — Study-Guide Site
+
+# Builds the HTML study-guide books into a GitHub Pages site.
+# Each book is a self-contained page; the index page lists all books
+# with download links to the PDFs from the rolling 'devops-pdfs' release.
+#
+# Change detection: only the full build step runs on every push to main.
+# The heavy Playwright PDF render is in docs-pdf.yml (separate workflow).
+#
+# URL (after enabling Pages in repo settings):
+#   https://<owner>.github.io/<repo>/
+#
+# How to enable GitHub Pages:
+#   Repo → Settings → Pages → Source: "GitHub Actions"
+#   (do NOT use "Deploy from a branch" — that's the legacy method)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "study-guide/**"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "study-guide/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false  # never cancel an in-progress Pages deploy
+
+permissions:
+  contents: read
+  pages: write       # needed to deploy to Pages
+  id-token: write    # needed for OIDC-based Pages token
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # 1. BUILD — assemble the site into _site/
+  # ─────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build Pages site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site directory
+        run: |
+          mkdir -p _site
+
+          # Copy all HTML books and the shared CSS
+          cp study-guide/devops-path.css   _site/
+          cp study-guide/book-*.html       _site/
+          cp study-guide/The-DevOps-Path.html _site/
+
+      - name: Generate site index (index.html)
+        run: python study-guide/build_index.py _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2. DEPLOY — publish to GitHub Pages (push to main only)
+  # ─────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        # Uses OIDC token from id-token: write permission above.
+        # No credentials stored anywhere — same OIDC pattern as AWS deploys.

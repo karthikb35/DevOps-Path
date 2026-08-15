@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terraform — The DevOps Architect's Path, Book VI</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book VI · Edition 2026</div>
+    <h1>Terraform</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">the infrastructure diff engine</strong> to <strong style="color:#8ff4ee">GitOps-driven IaC at org scale</strong>. Every cloud resource as reviewable, versioned, reproducible code.</div>
+    <div class="stackrow">🏗️ HCL · 📋 State · 📦 Modules · 🔄 Plan/Apply · 🔐 Security</div>
+    <div class="badges">
+      <span class="badge">🏗️ HCL language</span><span class="badge">📋 State management</span>
+      <span class="badge">📦 Modules</span><span class="badge">🔄 Plan/Apply loop</span>
+      <span class="badge">🔐 Secrets strategy</span><span class="badge">🤖 Atlantis GitOps</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Infrastructure as diff-able, reviewable code.</strong><br>Companion notebooks in <code style="color:#cfe0d6">06-terraform/</code>.</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">The Infrastructure Diff Engine</div><div class="dd">Desired state → state → diff → plan → apply · the mental model</div></div><span class="ic">🔄</span></li>
+    <li><span class="n">2</span><div><div class="tt">Providers — The Plugin Architecture</div><div class="dd">AWS · GCP · Azure · 3000+ providers · version pinning</div></div><span class="ic">🔌</span></li>
+    <li><span class="n">3</span><div><div class="tt">HCL Deep Dive</div><div class="dd">resource · data · variable · output · local · module · for_each · count</div></div><span class="ic">📝</span></li>
+    <li><span class="n">4</span><div><div class="tt">State — The Most Critical File</div><div class="dd">What state is · remote state S3 · locking · drift detection · import</div></div><span class="ic">📋</span></li>
+    <li><span class="n">5</span><div><div class="tt">Modules — DRY Infrastructure</div><div class="dd">Module structure · the Terraform Registry · versioning · outputs</div></div><span class="ic">📦</span></li>
+    <li><span class="n">6</span><div><div class="tt">Multi-Environment Strategy</div><div class="dd">Directory-per-env · workspaces trade-offs · tfvars · blast radius</div></div><span class="ic">🌍</span></li>
+    <li><span class="n">7</span><div><div class="tt">Terraform in CI/CD — Atlantis</div><div class="dd">GitOps model · plan on PR · apply on merge · audit trail</div></div><span class="ic">🤖</span></li>
+    <li><span class="n">8</span><div><div class="tt">Security — Secrets, OIDC, Least Privilege</div><div class="dd">Never store credentials · OIDC for cloud auth · prevent_destroy</div></div><span class="ic">🔐</span></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">🏗️</div>
+    <div><div class="t">Terraform — Infrastructure as Reviewable Code</div>
+    <div class="s">The diff engine that makes infrastructure changes as reviewable, auditable, and reversible as application code</div></div>
+    <div class="ico">🔄</div>
+  </div>
+
+  <p class="lead">Terraform is a <strong>diff engine for infrastructure</strong>. You declare what you want (HCL files). Terraform compares it against what you have (state file). It shows you exactly what will change — additions in green (<code class="inl">+</code>), modifications in yellow (<code class="inl">~</code>), destructions in red (<code class="inl">-</code>). You review and approve. Then it applies. This is <em>git diff</em> for cloud infrastructure — and it enables the same collaborative, reviewable workflow that code review enabled for application code.</p>
+
+  <h2 class="sec" id="s1">1 · The Infrastructure Diff Engine</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Git Diff for Cloud</div>
+  <p>You write <code class="inl">*.tf</code> files (desired state). Terraform reads them, reads the state file (actual known state), queries the cloud provider for real current state, and computes the diff. The <code class="inl">terraform plan</code> output is that diff: exactly what will be created, modified, or destroyed. Before applying, you read this diff the same way you read a pull request diff — checking for unintended changes, understanding the blast radius, and confirming the change matches the intent.</p></div>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">ClickOps — before Terraform</div>
+      <pre style="font-size:7.5pt">1. Log into AWS Console
+2. Click: Create VPC → subnets × 6
+   → Internet Gateway → Route tables
+   → Security groups...
+3. Hours later: env created
+4. No record of what was created
+5. Try to recreate staging: start over
+6. Staging drifts from prod over time</pre>
+    </div>
+    <div class="ba-col good">
+      <div class="label">Terraform IaC — after</div>
+      <pre style="font-size:7.5pt">1. Write HCL describing desired infra
+2. terraform plan  → see exact changes
+3. terraform apply → infra created
+4. git commit      → infra versioned!
+5. staging: workspace new staging
+   &amp;&amp; terraform apply → identical
+6. Any drift: terraform plan detects it</pre>
+    </div>
+  </div>
+
+  <h2 class="sec" id="s3">3 · HCL Deep Dive</h2>
+
+  <pre><span class="cmt"># ── variables.tf ──────────────────────────────────────────────</span>
+<span class="k">variable</span> <span class="s">"environment"</span> {
+  description = <span class="s">"dev | staging | production"</span>
+  type        = string
+  validation {
+    condition     = contains([<span class="s">"dev"</span>, <span class="s">"staging"</span>, <span class="s">"production"</span>], var.environment)
+    error_message = <span class="s">"Must be dev, staging, or production."</span>
+  }
+}
+
+<span class="cmt"># ── locals.tf ─────────────────────────────────────────────────</span>
+locals {
+  name_prefix  = <span class="s">"myapp-${var.environment}"</span>
+  common_tags  = {
+    Environment = var.environment
+    ManagedBy   = <span class="s">"terraform"</span>
+    Owner       = <span class="s">"platform-team"</span>
+  }
+}
+
+<span class="cmt"># ── main.tf ───────────────────────────────────────────────────</span>
+resource <span class="s">"aws_vpc"</span> <span class="s">"main"</span> {
+  cidr_block           = <span class="s">"10.0.0.0/16"</span>
+  enable_dns_hostnames = true
+  tags = merge(local.common_tags, { Name = <span class="s">"${local.name_prefix}-vpc"</span> })
+}
+
+<span class="cmt"># for_each: create N resources from a map — safer than count</span>
+resource <span class="s">"aws_subnet"</span> <span class="s">"private"</span> {
+  <span class="k">for_each</span> = {
+    <span class="s">"a"</span> = <span class="s">"10.0.1.0/24"</span>
+    <span class="s">"b"</span> = <span class="s">"10.0.2.0/24"</span>
+    <span class="s">"c"</span> = <span class="s">"10.0.3.0/24"</span>
+  }
+  vpc_id            = aws_vpc.main.id   <span class="cmt"># ← implicit dependency on vpc</span>
+  cidr_block        = each.value
+  availability_zone = <span class="s">"${var.aws_region}${each.key}"</span>
+  tags = merge(local.common_tags, { Name = <span class="s">"${local.name_prefix}-private-${each.key}"</span> })
+}
+
+<span class="cmt"># module: reuse a packaged group of resources</span>
+module <span class="s">"eks"</span> {
+  source  = <span class="s">"terraform-aws-modules/eks/aws"</span>
+  version = <span class="s">"~> 19.0"</span>       <span class="cmt"># ✓ pinned to major version</span>
+
+  cluster_name    = <span class="s">"${local.name_prefix}-eks"</span>
+  vpc_id          = aws_vpc.main.id
+  subnet_ids      = [for s in aws_subnet.private : s.id]
+
+  eks_managed_node_groups = {
+    general = { instance_types = [<span class="s">"t3.medium"</span>], min_size = 2, max_size = 10 }
+  }
+  tags = local.common_tags
+}
+
+<span class="cmt"># outputs.tf — exported values for other stacks</span>
+output <span class="s">"cluster_endpoint"</span> {
+  value     = module.eks.cluster_endpoint
+  sensitive = true  <span class="cmt"># ✓ hidden in logs</span>
+}</pre>
+
+  <h2 class="sec" id="s4">4 · State — The Most Critical File</h2>
+
+  <div class="box pitfall"><span class="ic">🚨</span><div class="h">Losing the state file is catastrophic</div>
+  <p>Terraform state maps your HCL resource addresses to real cloud resource IDs: <code class="inl">aws_vpc.main → vpc-0a1b2c3d</code>. Without state, Terraform thinks nothing exists and tries to create everything — resulting in duplicate resources, failed creates (some cloud resources enforce unique names), and an infrastructure your code no longer matches. Recovery requires <code class="inl">terraform import</code> for every resource — potentially days of work for large infrastructure.</p></div>
+
+  <pre><span class="cmt"># ✅ REQUIRED: remote state with locking in production</span>
+terraform {
+  backend <span class="s">"s3"</span> {
+    bucket         = <span class="s">"mycompany-terraform-state"</span>
+    key            = <span class="s">"production/eks/terraform.tfstate"</span>
+    region         = <span class="s">"us-east-1"</span>
+    encrypt        = true                 <span class="cmt"># ✓ AES-256 at rest</span>
+    dynamodb_table = <span class="s">"terraform-state-lock"</span>  <span class="cmt"># ✓ prevent concurrent applies</span>
+  }
+}</pre>
+
+  <h2 class="sec" id="s7">7 · Terraform in CI/CD — Atlantis</h2>
+
+  <div class="box bigidea"><span class="ic">💡</span><div class="h">The GitOps Model for Infrastructure</div>
+  <p>Atlantis is the missing piece: it runs <code class="inl">terraform plan</code> automatically on every PR and posts the output as a comment. Engineers review the plan diff — "this will create 3 EC2 instances and delete 1 S3 bucket" — just like reviewing a code diff. Comment <code class="inl">atlantis apply</code> to apply. No one runs <code class="inl">terraform apply</code> locally on production. Every infrastructure change is: proposed → planned → reviewed → applied → logged. This is the same workflow application code goes through. The audit trail is the PR history.</p></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 140" role="img" aria-label="Atlantis GitOps workflow">
+      <defs><marker id="ta" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L5,3 L0,6 Z" fill="#7b42bc"/></marker></defs>
+      <g font-family="Segoe UI,sans-serif">
+        <rect x="10" y="20" width="120" height="100" rx="8" fill="#f5f3ff" stroke="#7c3aed"/>
+        <text x="70" y="42" text-anchor="middle" font-size="9" font-weight="700" fill="#5b21b6">Engineer</text>
+        <text x="70" y="58" text-anchor="middle" font-size="8" fill="#6d28d9">edits *.tf file</text>
+        <text x="70" y="72" text-anchor="middle" font-size="8" fill="#6d28d9">opens PR</text>
+        <text x="70" y="86" text-anchor="middle" font-size="8" fill="#6d28d9">team reviews</text>
+        <text x="70" y="100" text-anchor="middle" font-size="8" fill="#6d28d9">atlantis apply</text>
+        <text x="70" y="114" text-anchor="middle" font-size="8" fill="#6d28d9">→ PR merged</text>
+
+        <path d="M130,70 L165,70" stroke="#7b42bc" stroke-width="1.5" marker-end="url(#ta)"/>
+
+        <rect x="168" y="20" width="130" height="100" rx="8" fill="#fdf4ff" stroke="#a855f7"/>
+        <text x="233" y="42" text-anchor="middle" font-size="9" font-weight="700" fill="#7e22ce">Atlantis</text>
+        <text x="233" y="58" text-anchor="middle" font-size="8" fill="#9333ea">Detects PR</text>
+        <text x="233" y="72" text-anchor="middle" font-size="8" fill="#9333ea">terraform plan</text>
+        <text x="233" y="86" text-anchor="middle" font-size="8" fill="#9333ea">Posts plan to PR</text>
+        <text x="233" y="100" text-anchor="middle" font-size="8" fill="#9333ea">On approval:</text>
+        <text x="233" y="114" text-anchor="middle" font-size="8" fill="#9333ea">terraform apply</text>
+
+        <path d="M298,70 L335,70" stroke="#7b42bc" stroke-width="1.5" marker-end="url(#ta)"/>
+
+        <rect x="338" y="20" width="200" height="100" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="438" y="42" text-anchor="middle" font-size="9" font-weight="700" fill="#713f12">PR Comment (auto)</text>
+        <text x="438" y="58" text-anchor="middle" font-size="8" fill="#92400e">Plan: +3 to add, ~1 to change,</text>
+        <text x="438" y="70" text-anchor="middle" font-size="8" fill="#92400e">-0 to destroy</text>
+        <text x="438" y="84" text-anchor="middle" font-size="8.5" font-weight="700" fill="#16a34a">+ aws_subnet.private["a"]</text>
+        <text x="438" y="97" text-anchor="middle" font-size="8.5" font-weight="700" fill="#16a34a">+ aws_subnet.private["b"]</text>
+        <text x="438" y="110" text-anchor="middle" font-size="8.5" fill="#ca8a04">~ aws_vpc.main (tags changed)</text>
+
+        <path d="M538,70 L575,70" stroke="#7b42bc" stroke-width="1.5" marker-end="url(#ta)"/>
+
+        <rect x="578" y="20" width="140" height="100" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="648" y="42" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">AWS</text>
+        <text x="648" y="58" text-anchor="middle" font-size="8" fill="#16a34a">Resources created</text>
+        <text x="648" y="72" text-anchor="middle" font-size="8" fill="#16a34a">State updated in S3</text>
+        <text x="648" y="86" text-anchor="middle" font-size="8" fill="#16a34a">CloudTrail logged</text>
+        <text x="648" y="100" text-anchor="middle" font-size="8" fill="#16a34a">DynamoDB lock</text>
+        <text x="648" y="114" text-anchor="middle" font-size="8" fill="#16a34a">released</text>
+
+        <rect x="728" y="40" width="125" height="60" rx="8" fill="#f0f9ff" stroke="#38bdf8"/>
+        <text x="790" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="#0369a1">Complete audit trail</text>
+        <text x="790" y="72" text-anchor="middle" font-size="8" fill="#0284c7">PR = change record</text>
+        <text x="790" y="86" text-anchor="middle" font-size="8" fill="#0284c7">No local applies</text>
+      </g>
+    </svg>
+    <figcaption>Figure 6.1 — Atlantis GitOps workflow. Every infrastructure change goes through a PR. Atlantis auto-runs <code>terraform plan</code> and posts the diff. Engineers review. On <code>atlantis apply</code>, Atlantis applies and updates state. No one runs <code>terraform apply</code> locally on production — the PR <em>is</em> the change record and audit trail.</figcaption>
+  </figure>
+
+  <h2 class="sec" id="s8">8 · The 10 Commandments of Terraform at Scale</h2>
+
+  <ul class="plain">
+    <li><strong>Remote state always</strong> — S3 + DynamoDB locking; never commit <code class="inl">terraform.tfstate</code> to Git</li>
+    <li><strong>Module everything repeated</strong> — reuse a resource pattern &gt;1 time? Make a module</li>
+    <li><strong>Separate state by blast radius</strong> — VPC (monthly change) ≠ apps (daily change): separate state files</li>
+    <li><strong>Pin provider and module versions</strong> — <code class="inl">~&gt; 5.0</code> not <code class="inl">&gt; 5.0</code>; commit <code class="inl">.terraform.lock.hcl</code></li>
+    <li><strong>No secrets in Terraform variables or state</strong> — use data sources to read from Vault/Secrets Manager</li>
+    <li><strong>Plan before apply — always</strong> — <code class="inl">terraform plan -out=tfplan; terraform apply tfplan</code></li>
+    <li><strong>Tag everything</strong> — Environment, Owner, ManagedBy=terraform, CostCenter</li>
+    <li><strong>Drift detection on a schedule</strong> — daily <code class="inl">terraform plan</code> in CI; alert on unexpected output</li>
+    <li><strong><code class="inl">prevent_destroy</code> on critical resources</strong> — prevent accidental destruction of prod databases</li>
+    <li><strong>Atlantis or equivalent for production</strong> — no local applies; all changes through PR workflow</li>
+  </ul>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>Terraform is a diff engine — desired (HCL) vs actual (state) → plan → apply</li>
+    <li>State is the most critical file; lose it and you lose control of your infrastructure</li>
+    <li><code class="inl">for_each</code> over <code class="inl">count</code> for creating multiple resources — removing a middle element doesn't renumber others</li>
+    <li>Modules are functions for infrastructure — extract repeated patterns, version them</li>
+    <li>GitOps via Atlantis: infrastructure PRs reviewed like code PRs, complete audit trail</li>
+    <li>OIDC for cloud auth in CI — no AWS keys stored anywhere in your pipeline</li>
+  </ul></div>
+</section>
+</body>
+</html>

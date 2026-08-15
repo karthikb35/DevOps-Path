@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Branch Protection &amp; CI Checks — The DevOps Architect's Path, Book VIII</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+
+<!-- ═══════════ COVER ═══════════ -->
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book VIII · Edition 2026</div>
+    <h1>Branch Protection,<br>CI Checks &amp;<br>GitHub Pages</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">social contracts to technical enforcement</strong>. The complete stack: branch protection rules, CODEOWNERS, ruff linting, isort, protection tests, and a deep dive into every dimension of <strong style="color:#8ff4ee">GitHub Pages</strong> — site types, OIDC deployment, custom domains, environment protection, and troubleshooting.</div>
+    <div class="stackrow">🛡️ Protection · 👤 CODEOWNERS · ⚡ Ruff · 🔀 Isort · 🧪 Tests · 📄 Pages · uv</div>
+    <div class="badges">
+      <span class="badge">🛡️ Branch protection rules</span>
+      <span class="badge">👤 CODEOWNERS enforcement</span>
+      <span class="badge">⚡ Ruff — all-in-one linter</span>
+      <span class="badge">🔀 Import order (isort)</span>
+      <span class="badge">🧪 Structural protection tests</span>
+      <span class="badge">📄 GitHub Pages — deep dive</span>
+      <span class="badge">🌍 Three site types</span>
+      <span class="badge">🔐 OIDC Pages deployment</span>
+      <span class="badge">🌐 Custom domains</span>
+      <span class="badge">uv package manager</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Make the right behaviour technically unavoidable.</strong><br>Companion: <code style="color:#cfe0d6">01-git-github-actions/examples/03_branch_protection_required_checks.ipynb</code></div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Step-by-step · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<!-- ═══════════ TOC ═══════════ -->
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <p class="small">Book VIII — the capstone of the CI/CD series. Everything built in Books I–VII depends on this chapter's guarantee: <em>only code that passes every quality gate reaches main</em>. This book explains the complete enforcement stack — from branch protection rules in GitHub UI, through CODEOWNERS and required checks, to the ruff + isort linting pipeline, structural protection tests, and a comprehensive deep dive into <strong>GitHub Pages</strong> (site types, OIDC, custom domains, environment protection, troubleshooting), and <strong>uv</strong> as the modern Python package manager for pre-commit and CI.</p>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">The Enforcement Mindset</div><div class="dd">Social contracts vs technical enforcement · the airlock model · trust through code</div></div><span class="ic">🧠</span></li>
+    <li><span class="n">2</span><div><div class="tt">Branch Protection Rules</div><div class="dd">Required PRs · review counts · dismissing stale reviews · admin bypass · linear history</div></div><span class="ic">🛡️</span></li>
+    <li><span class="n">3</span><div><div class="tt">Required Status Checks</div><div class="dd">How the check-name contract works · up-to-date branches · merge queues</div></div><span class="ic">✅</span></li>
+    <li><span class="n">4</span><div><div class="tt">CODEOWNERS</div><div class="dd">Syntax · team ownership · combining with branch protection · Google OWNERS model</div></div><span class="ic">👤</span></li>
+    <li><span class="n">5</span><div><div class="tt">Ruff — The All-in-One Linter</div><div class="dd">Rule categories · auto-fix · ruff format · replacing 5 tools with 1</div></div><span class="ic">⚡</span></li>
+    <li><span class="n">6</span><div><div class="tt">Import Order (isort via Ruff)</div><div class="dd">Why import order matters · rule I · configuring · the separate required check pattern</div></div><span class="ic">🔀</span></li>
+    <li><span class="n">7</span><div><div class="tt">Protection Tests (pytest)</div><div class="dd">Notebook JSON · no committed outputs · workflow timeouts · HTML structure · CODEOWNERS present</div></div><span class="ic">🧪</span></li>
+    <li><span class="n">8</span><div><div class="tt">GitHub Pages — Complete Deep Dive</div><div class="dd">Site types · legacy vs Actions deployment · OIDC flow · all settings · custom domains · environment protection · 3 scenarios · troubleshooting · index generation · the study-guide site</div></div><span class="ic">📄</span></li>
+    <li><span class="n">9</span><div><div class="tt">The Complete Setup Walkthrough</div><div class="dd">Step-by-step: uv install → pre-commit → CI → branch protection → verify</div></div><span class="ic">🔧</span></li>
+    <li><span class="n">10</span><div><div class="tt">Interview Questions</div><div class="dd">Senior/architect-level Q&amp;A on enforcement, ruff, flakiness, supply-chain</div></div><span class="ic">🎓</span></li>
+  </ol>
+  <div class="subitems">Companion: <code>01-git-github-actions/examples/03_branch_protection_required_checks.ipynb</code> · <code>.github/workflows/ci.yml</code> · <code>.github/workflows/pages.yml</code> · <code>ruff.toml</code> · <code>tests/test_repo_structure.py</code></div>
+</section>
+
+<!-- ═══════════ MAIN CHAPTER ═══════════ -->
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">🛡️</div>
+    <div><div class="t">Branch Protection, CI Checks &amp; GitHub Pages</div>
+    <div class="s">Turning "we try to always run tests" into "it is technically impossible not to"</div></div>
+    <div class="ico">✅</div>
+  </div>
+
+  <p class="lead">A repository without branch protection is a repository where quality is a social contract. Social contracts fail under pressure. This book is about turning quality from a guideline into a <strong>technical constraint</strong>: a set of rules enforced by GitHub's API that make it physically impossible to merge code that hasn't passed every configured gate — regardless of who is merging, what time it is, or how much deadline pressure exists.</p>
+
+  <div class="coderef">
+    <div class="h">📂 Files created in this chapter</div>
+    <ul>
+      <li><span class="path">.github/CODEOWNERS</span> — maps file patterns to required reviewers</li>
+      <li><span class="path">.github/workflows/ci.yml</span> — lint, isort, tests, YAML lint, secret scan</li>
+      <li><span class="path">.github/workflows/pages.yml</span> — builds and deploys the HTML study-guide to GitHub Pages</li>
+      <li><span class="path">ruff.toml</span> — all-in-one linter and formatter configuration</li>
+      <li><span class="path">pyproject.toml</span> — pytest and isort configuration</li>
+      <li><span class="path">tests/test_repo_structure.py</span> — structural protection tests</li>
+      <li><span class="path">01-git-github-actions/examples/03_branch_protection_required_checks.ipynb</span> — companion notebook</li>
+    </ul>
+  </div>
+
+  <!-- ══════ 1 · MINDSET ══════ -->
+  <h2 class="sec" id="s1">1 · The Enforcement Mindset</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Airlock</div>
+  <p>An airlock prevents vacuum from reaching the spacecraft cabin. It doesn't rely on astronauts remembering to close the inner door. The inner door cannot open while the outer door is open — it is <em>mechanically prevented</em>. Branch protection is the airlock for your codebase: the merge button cannot activate while required checks are failing, regardless of who presses it. No amount of time pressure, authority, or forgetting changes this fact.</p></div>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">Before — social contract</div>
+      <p>"We always run tests before merging."</p>
+      <p>Except at 2 AM during an incident. Except when the deadline is tomorrow. Except when a senior engineer with admin rights needs to "just quickly push this one thing."</p>
+      <p>Result: broken main branch every few months. Post-mortem: "we need to be more diligent."</p>
+    </div>
+    <div class="ba-col good">
+      <div class="label">After — technical enforcement</div>
+      <p>Branch protection rules + required status checks + CODEOWNERS.</p>
+      <p>At 2 AM, under deadline pressure, with the CTO watching: the merge button is still grey until all checks pass. The rules don't know who is merging. They don't care about the pressure.</p>
+      <p>Result: main branch has never been broken by a merged PR. Not by accident. Not by anyone.</p>
+    </div>
+  </div>
+
+  <!-- ══════ 2 · BRANCH PROTECTION ══════ -->
+  <h2 class="sec" id="s2">2 · Branch Protection Rules</h2>
+
+  <div class="def what"><span class="lab">What</span><p>Branch protection rules are server-side constraints on a specific branch (usually <code class="inl">main</code>). They are enforced by GitHub's API — not by convention, not by pre-commit hooks, not by CI alone. Even <code class="inl">git push --force</code> from a machine with push access is blocked if the branch has force-push protection enabled.</p></div>
+
+  <div class="def why"><span class="lab">Why</span><p>Because every other defence is bypassable. A pre-commit hook can be skipped with <code class="inl">git commit --no-verify</code>. CI can be ignored if the merge button still works when checks fail. Admin access can override everything. Branch protection rules with <em>Include administrators</em> are the only layer that has no escape hatch.</p></div>
+
+  <div class="def how"><span class="lab">How — complete configuration for this repo</span>
+  <p>Navigate to: <strong>github.com/karthikb35/devops-study → Settings → Branches → Add rule</strong></p>
+  <pre><span class="cmt">Branch name pattern: main</span>
+
+<span class="ok">✅</span> Require a pull request before merging
+   Required approving reviews: 1
+   <span class="ok">✅</span> Dismiss stale pull request approvals when new commits are pushed
+   <span class="ok">✅</span> Require review from Code Owners
+   <span class="ok">✅</span> Require approval of the most recent reviewable push
+
+<span class="ok">✅</span> Require status checks to pass before merging
+   <span class="ok">✅</span> Require branches to be up to date before merging
+   Required status checks (exact names):
+     <span class="s">• Lint &amp; Format (ruff)</span>
+     <span class="s">• Import Order (isort via ruff)</span>
+     <span class="s">• Protection Tests (pytest)</span>
+     <span class="s">• YAML Lint (workflows)</span>
+     <span class="s">• Secret Detection</span>
+     <span class="s">• Build Pages site</span>
+
+<span class="ok">✅</span> Require conversation resolution before merging
+<span class="ok">✅</span> Require linear history  <span class="cmt"># no merge commits — squash or rebase only</span>
+<span class="ok">✅</span> Do not allow bypassing the above settings  <span class="cmt"># CRITICAL: admins included</span>
+<span class="ok">✅</span> Restrict who can push: karthikb35</pre></div>
+
+  <div class="def when"><span class="lab">When to add each rule</span>
+  <dl class="gloss">
+    <dt>Require PR (from day 1)</dt><dd>Even solo projects benefit — PRs create a record of every change, a trigger for CI, and a review checkpoint.</dd>
+    <dt>Include administrators (always)</dt><dd>Without this, any admin can bypass all rules. The rules exist for admins too — especially admins, who have the most access.</dd>
+    <dt>Linear history</dt><dd>When the git log is important for traceability (compliance, post-mortems). Not necessary for all teams, but valuable for regulated environments.</dd>
+  </dl></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 200" role="img" aria-label="Branch protection flow">
+      <defs><marker id="bpa" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L5,3 L0,6 Z" fill="#0369a1"/></marker></defs>
+      <g font-family="Segoe UI,sans-serif">
+        <text x="430" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="#0c2340">Branch Protection Gate Flow</text>
+
+        <!-- Engineer -->
+        <rect x="10" y="28" width="110" height="60" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+        <text x="65" y="54" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">Engineer</text>
+        <text x="65" y="70" text-anchor="middle" font-size="8" fill="#6d28d9">opens PR</text>
+
+        <path d="M120,58 L150,58" stroke="#0369a1" stroke-width="1.5" marker-end="url(#bpa)"/>
+
+        <!-- CI runs -->
+        <rect x="153" y="28" width="165" height="120" rx="8" fill="#f0f9ff" stroke="#0284c7"/>
+        <text x="235" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#0369a1">CI Runs (parallel)</text>
+        <text x="235" y="66" text-anchor="middle" font-size="8.5" fill="#15803d">✓ lint</text>
+        <text x="235" y="80" text-anchor="middle" font-size="8.5" fill="#15803d">✓ isort</text>
+        <text x="235" y="94" text-anchor="middle" font-size="8.5" fill="#15803d">✓ test</text>
+        <text x="235" y="108" text-anchor="middle" font-size="8.5" fill="#15803d">✓ yaml-lint</text>
+        <text x="235" y="122" text-anchor="middle" font-size="8.5" fill="#15803d">✓ secret-scan</text>
+        <text x="235" y="136" text-anchor="middle" font-size="8.5" fill="#15803d">✓ pages-build</text>
+
+        <path d="M318,88 L348,88" stroke="#0369a1" stroke-width="1.5" marker-end="url(#bpa)"/>
+
+        <!-- Review -->
+        <rect x="351" y="28" width="150" height="120" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="426" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#713f12">Review Gate</text>
+        <text x="426" y="66" text-anchor="middle" font-size="8.5" fill="#92400e">1 approving review</text>
+        <text x="426" y="82" text-anchor="middle" font-size="8.5" fill="#92400e">CODEOWNER approval</text>
+        <text x="426" y="98" text-anchor="middle" font-size="8.5" fill="#92400e">No stale approvals</text>
+        <text x="426" y="114" text-anchor="middle" font-size="8.5" fill="#92400e">All conversations</text>
+        <text x="426" y="130" text-anchor="middle" font-size="8.5" fill="#92400e">resolved</text>
+
+        <path d="M501,88 L531,88" stroke="#0369a1" stroke-width="1.5" marker-end="url(#bpa)"/>
+
+        <!-- GitHub API check -->
+        <rect x="534" y="28" width="155" height="120" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="611" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">GitHub API Gate</text>
+        <text x="611" y="66" text-anchor="middle" font-size="8.5" fill="#16a34a">All required checks ✓</text>
+        <text x="611" y="82" text-anchor="middle" font-size="8.5" fill="#16a34a">Reviews satisfied ✓</text>
+        <text x="611" y="98" text-anchor="middle" font-size="8.5" fill="#16a34a">Branch up-to-date ✓</text>
+        <text x="611" y="114" text-anchor="middle" font-size="8.5" fill="#16a34a">No bypass possible</text>
+        <text x="611" y="130" text-anchor="middle" font-size="8.5" fill="#16a34a">(incl. admins)</text>
+
+        <path d="M689,88 L719,88" stroke="#16a34a" stroke-width="2" marker-end="url(#bpa)"/>
+
+        <!-- Merge -->
+        <rect x="722" y="55" width="128" height="66" rx="8" fill="#0c2340" stroke="#7fe3e2" stroke-width="2"/>
+        <text x="786" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="#7fe3e2">✅ MERGE</text>
+        <text x="786" y="96" text-anchor="middle" font-size="8.5" fill="#93c5fd">Squash commit</text>
+        <text x="786" y="110" text-anchor="middle" font-size="8" fill="#93c5fd">to main</text>
+
+        <!-- Fail path -->
+        <rect x="153" y="168" width="140" height="28" rx="6" fill="#fef2f2" stroke="#ef4444"/>
+        <text x="223" y="186" text-anchor="middle" font-size="8.5" font-weight="700" fill="#dc2626">❌ Any check fails →</text>
+        <rect x="300" y="168" width="200" height="28" rx="6" fill="#fef2f2" stroke="#ef4444"/>
+        <text x="400" y="186" text-anchor="middle" font-size="8.5" fill="#dc2626">Merge blocked. Fix required. No exceptions.</text>
+      </g>
+    </svg>
+    <figcaption>Figure 8.1 — The branch protection gate flow. CI runs in parallel (< 10 min). Review gate requires human approval. GitHub API gate is the final check — it cannot be bypassed by anyone, including admins, when "Do not allow bypassing" is enabled. Only when all gates pass does the merge button activate.</figcaption>
+  </figure>
+
+  <!-- ══════ 3 · REQUIRED STATUS CHECKS ══════ -->
+  <h2 class="sec" id="s3">3 · Required Status Checks</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Named Contract</div>
+  <p>A required status check is a contract identified by an exact string (the check name). GitHub compares the check name against the names of CI jobs that ran on the PR's HEAD commit. The critical detail: <strong>the check name in GitHub branch protection settings must exactly match the <code>name:</code> field of the CI job</strong>. A typo in either place means the check is never satisfied — the merge button stays grey forever.</p></div>
+
+  <div class="def how"><span class="lab">How — The Name Contract</span>
+  <pre><span class="cmt"># In .github/workflows/ci.yml:</span>
+jobs:
+  lint:
+    <span class="k">name</span>: <span class="s">Lint &amp; Format (ruff)</span>    <span class="cmt"># ← THIS EXACT STRING</span>
+  isort:
+    <span class="k">name</span>: <span class="s">Import Order (isort via ruff)</span>  <span class="cmt"># ← THIS EXACT STRING</span>
+
+<span class="cmt"># In GitHub Settings → Branches → main → Required status checks:</span>
+<span class="cmt"># Search field: "Lint &amp; Format (ruff)"  ← MUST MATCH EXACTLY</span>
+<span class="cmt">#               "Import Order (isort via ruff)"</span>
+<span class="cmt"># The search only shows checks that have run at least once on this repo.</span>
+<span class="cmt"># First: push a PR, let CI run, THEN add the checks to branch protection.</span></pre></div>
+
+  <div class="box gotcha"><span class="ic">⚠️</span><div class="h">Gotcha — The bootstrap problem</div>
+  <p>GitHub only shows status checks in the branch protection UI <em>after they have run at least once</em> on the repository. You cannot add a required check for a workflow that has never executed. The workflow order is: (1) push the CI workflow file, (2) open a PR to trigger it, (3) wait for the jobs to run, (4) go to Settings → Branches and add the named checks. If you add the check name before the job has run, GitHub accepts it as a string but it will never be satisfied (the check never ran = always pending).</p></div>
+
+  <!-- ══════ 4 · CODEOWNERS ══════ -->
+  <h2 class="sec" id="s4">4 · CODEOWNERS</h2>
+
+  <div class="def what"><span class="lab">What</span><p>A <code class="inl">.github/CODEOWNERS</code> file maps glob patterns to GitHub usernames or team names. When a PR touches a file matching a pattern, the mapped owner is automatically requested as a reviewer. When combined with branch protection's <em>Require review from Code Owners</em>, the owner's approval becomes a hard requirement — the merge is blocked until they approve.</p></div>
+
+  <pre><span class="cmt"># .github/CODEOWNERS for this repository</span>
+<span class="cmt"># Pattern evaluation: last matching pattern wins</span>
+
+*                               @karthikb35  <span class="cmt"># global fallback</span>
+
+<span class="cmt"># CI/CD configuration — highest security sensitivity</span>
+.github/                        @karthikb35  <span class="cmt"># any CI/workflow change requires review</span>
+
+<span class="cmt"># Study guide books</span>
+study-guide/                    @karthikb35
+
+<span class="cmt"># Module notebooks</span>
+01-git-github-actions/          @karthikb35
+02-jenkins/                     @karthikb35
+<span class="cmt"># ... (all modules)</span></pre>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Why .github/ is the highest-priority CODEOWNER pattern</div>
+  <p>The <code class="inl">.github/</code> directory contains workflow files, branch protection is defined here, and CODEOWNERS itself lives here. A malicious or carelessly-changed workflow can: (a) disable all security scans, (b) add commands that exfiltrate secrets via <code class="inl">curl</code>, (c) disable required checks. This is why the Codecov supply-chain attack was so effective — engineers trusted CI scripts without reviewing them. By requiring the repo owner's approval for any <code class="inl">.github/</code> change, no workflow modification can be merged without expert eyes on it.</p></div>
+
+  <!-- ══════ 5 · RUFF ══════ -->
+  <h2 class="sec" id="s5">5 · Ruff — The All-in-One Linter</h2>
+
+  <div class="def what"><span class="lab">What</span><p>Ruff is a Python linter and formatter written in Rust. It implements rules from: pyflakes (F), pycodestyle (E/W), isort (I), pyupgrade (UP), flake8-bugbear (B), flake8-bandit (S), and 40+ other plugins — all in one binary, configured in <code class="inl">ruff.toml</code>, running in milliseconds.</p></div>
+
+  <div class="def why"><span class="lab">Why ruff over flake8 + isort + bandit</span>
+  <ul class="plain">
+    <li><strong>Speed:</strong> 10–100× faster than Python-based tools. 100k-line codebase: ~200ms vs 20+ seconds.</li>
+    <li><strong>Consolidation:</strong> One binary, one config, one CI step. No version conflicts between tools.</li>
+    <li><strong>Auto-fix:</strong> <code class="inl">ruff check --fix .</code> auto-corrects hundreds of rules. Engineers fix issues without manual editing.</li>
+    <li><strong>Formatter:</strong> <code class="inl">ruff format</code> replaces Black with identical output and 3× the speed.</li>
+  </ul></div>
+
+  <table>
+    <tr><th>Tool replaced</th><th>Ruff rule prefix</th><th>Example rule</th><th>What it catches</th></tr>
+    <tr><td>flake8</td><td>E, W, F</td><td>F401</td><td>Unused imports</td></tr>
+    <tr><td>isort</td><td>I</td><td>I001</td><td>Wrong import order</td></tr>
+    <tr><td>pyupgrade</td><td>UP</td><td>UP007</td><td><code class="inl">Optional[X]</code> → <code class="inl">X | None</code></td></tr>
+    <tr><td>flake8-bugbear</td><td>B</td><td>B006</td><td>Mutable default argument</td></tr>
+    <tr><td>bandit</td><td>S</td><td>S603</td><td>subprocess with shell=True</td></tr>
+    <tr><td>flake8-simplify</td><td>SIM</td><td>SIM108</td><td>Unnecessary if/else → ternary</td></tr>
+    <tr><td>Black</td><td>— (formatter)</td><td>ruff format</td><td>Code formatting</td></tr>
+  </table>
+
+  <pre><span class="cmt"># ruff.toml — the complete configuration for this repository</span>
+[lint]
+select = [
+    <span class="s">"E"</span>, <span class="s">"W"</span>,  <span class="cmt"># pycodestyle</span>
+    <span class="s">"F"</span>,       <span class="cmt"># pyflakes (unused imports, undefined names)</span>
+    <span class="s">"I"</span>,       <span class="cmt"># isort (import order)</span>
+    <span class="s">"UP"</span>,      <span class="cmt"># pyupgrade (modernise syntax)</span>
+    <span class="s">"B"</span>,       <span class="cmt"># flake8-bugbear (likely bugs)</span>
+    <span class="s">"S"</span>,       <span class="cmt"># flake8-bandit (security)</span>
+    <span class="s">"SIM"</span>,     <span class="cmt"># flake8-simplify</span>
+    <span class="s">"RUF"</span>,     <span class="cmt"># ruff-specific rules</span>
+]
+ignore = [
+    <span class="s">"S101"</span>,  <span class="cmt"># allow assert in notebooks/tests</span>
+    <span class="s">"T201"</span>,  <span class="cmt"># allow print() in demos</span>
+    <span class="s">"E501"</span>,  <span class="cmt"># line length managed by formatter</span>
+]
+
+[format]
+quote-style = <span class="s">"double"</span>
+indent-style = <span class="s">"space"</span>
+docstring-code-format = true</pre>
+
+  <!-- ══════ 6 · ISORT ══════ -->
+  <h2 class="sec" id="s6">6 · Import Order (isort via Ruff)</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Bookshelf</div>
+  <p>Imports are like books on a shelf. Isort enforces the library classification system: standard library books in section 1, third-party books in section 2, your own books in section 3. Within each section, alphabetical order. A shelf where medical books are mixed with cookbooks and computer science is technically functional but cognitively exhausting to navigate. Ordered imports are the same: technically unimportant to the interpreter, but enormously important for the engineer reading the file.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>Isort defines the canonical order for Python import statements: (1) <code class="inl">__future__</code> imports, (2) standard library (<code class="inl">os</code>, <code class="inl">sys</code>, <code class="inl">json</code>), (3) third-party packages (<code class="inl">fastapi</code>, <code class="inl">pydantic</code>), (4) local imports. Within each section: alphabetical. Groups separated by a blank line.</p></div>
+
+  <pre><span class="cmt"># ❌ BEFORE — isort violation, I001 rule fires:</span>
+import json
+import os
+from pathlib import Path        <span class="cmt"># standard library mixed up</span>
+import yaml                     <span class="cmt"># third-party before stdlib blank line</span>
+from dataclasses import dataclass
+import sys
+
+<span class="cmt"># ✅ AFTER — ruff check --select I --fix . auto-corrects this:</span>
+from __future__ import annotations
+
+import json
+import os
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml</pre>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Why isort is a separate required check</div>
+  <p>Import order is a low-noise, high-signal check. If it fails, it means exactly one thing: someone added an import without running the formatter. This is almost always fixable in 2 seconds with <code class="inl">ruff check --select I --fix .</code>. By making isort a <em>separate</em> required check from the full lint check, you get two benefits: (1) the CI output clearly shows "import order failed" vs "security rule failed" — clearer diagnosis; (2) you can require isort independently of other lint rules — for repos where you're gradually migrating to ruff, you can require isort first before adding heavier rules.</p></div>
+
+  <!-- ══════ 7 · PROTECTION TESTS ══════ -->
+  <h2 class="sec" id="s7">7 · Protection Tests (pytest)</h2>
+
+  <div class="def what"><span class="lab">What</span><p>Protection tests are a pytest suite that checks the repository's <em>structural health</em> rather than application logic. They answer: are all notebooks valid JSON? Are workflow YAML files parseable? Does every job have a timeout? Is the CODEOWNERS file present? Do all HTML books have the required structure? These tests run on every PR and catch issues that would otherwise silently cause CI to behave unexpectedly.</p></div>
+
+  <table>
+    <tr><th>Test</th><th>File tested</th><th>What breaks without it</th></tr>
+    <tr><td><code class="inl">test_notebook_is_valid_json</code></td><td>All <code class="inl">*.ipynb</code></td><td>VS Code silently fails to open a malformed notebook</td></tr>
+    <tr><td><code class="inl">test_notebook_has_no_outputs</code></td><td>All <code class="inl">*.ipynb</code></td><td>PR diffs become noisy with rendered output data</td></tr>
+    <tr><td><code class="inl">test_workflow_has_concurrency</code></td><td>Deploy workflows</td><td>Two deploys race, state is corrupted</td></tr>
+    <tr><td><code class="inl">test_workflow_jobs_have_timeouts</code></td><td>All workflows</td><td>A hung job consumes runner minutes indefinitely</td></tr>
+    <tr><td><code class="inl">test_html_book_has_mental_model_boxes</code></td><td>All <code class="inl">book-*.html</code></td><td>A book is published without the required pedagogical structure</td></tr>
+    <tr><td><code class="inl">test_codeowners_exists</code></td><td><code class="inl">.github/CODEOWNERS</code></td><td>GitHub cannot enforce required reviewer assignments</td></tr>
+    <tr><td><code class="inl">test_every_module_has_main_notebook</code></td><td>Module directories</td><td>A new module is created without a corresponding notebook</td></tr>
+  </table>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: Airbnb's Repository Health Tests</div>
+  <p>Airbnb runs a suite they call "repository hygiene" tests — equivalent to this chapter's protection tests. They test: every Python package has a <code class="inl">README.md</code>, every service has an on-call contact documented, every workflow has an SLO alert configured, every Docker image has a Trivy scan result in the PR. These tests are required on every PR. The result: structural drift that used to be discovered during incidents (no on-call contact during an outage) is now caught during code review. The tests don't run application code; they enforce the <em>meta-quality</em> of the repository itself.</p></div>
+
+  <!-- ══════ 8 · GITHUB PAGES — COMPLETE DEEP DIVE ══════ -->
+  <h2 class="sec" id="s8">8 · GitHub Pages — Complete Deep Dive</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Always-On Website Living Inside Your Repo</div>
+  <p>GitHub Pages turns a directory of HTML/CSS/JS files inside your repository into a permanently hosted, HTTPS-secured website with zero infrastructure to manage. Think of it as a content delivery network that reads from your Git history. When you push a commit, the website updates. When you open a PR, GitHub can show a preview URL. When something goes wrong, you roll back the commit. The mental model: <strong>your website is a git branch</strong> — it has the same version history, the same review process, and the same branch protection you've configured for your code.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>GitHub Pages is a static site hosting service built directly into GitHub. It serves files from your repository over HTTPS at a predictable URL. It supports raw HTML/CSS/JS (what we use), Jekyll (static site generator, runs automatically if a <code class="inl">_config.yml</code> exists), and custom domains. Crucially, the modern deployment path uses GitHub Actions — the same OIDC, concurrency, and environment-protection model we use for production deployments.</p></div>
+
+  <div class="def why"><span class="lab">Why GitHub Pages instead of Vercel/Netlify/S3</span>
+  <ul class="plain">
+    <li><strong>Zero infrastructure:</strong> No S3 bucket, CloudFront distribution, or CDN config. No AWS account needed.</li>
+    <li><strong>Same review flow:</strong> A PR to change the books also updates the live site — one workflow, one review cycle.</li>
+    <li><strong>Free for public repos:</strong> No hosting cost, no bandwidth cap for public repositories.</li>
+    <li><strong>OIDC deployment:</strong> Same passwordless credential pattern as AWS. No deploy keys stored anywhere.</li>
+    <li><strong>Environment protection:</strong> Use GitHub Environments to require approval before the site updates.</li>
+  </ul></div>
+
+  <div class="def when"><span class="lab">When to use each Pages scenario</span>
+  <table>
+    <tr><th>Scenario</th><th>Site URL pattern</th><th>Use for</th><th>Limit</th></tr>
+    <tr><td><strong>User site</strong></td><td><code class="inl">karthikb35.github.io</code></td><td>Portfolio, personal homepage</td><td>One per GitHub account</td></tr>
+    <tr><td><strong>Organization site</strong></td><td><code class="inl">myorg.github.io</code></td><td>Org landing page, documentation hub</td><td>One per org</td></tr>
+    <tr><td><strong>Project site</strong></td><td><code class="inl">karthikb35.github.io/DevOps-Path</code></td><td>Per-repo docs, study guides (our case)</td><td>Unlimited</td></tr>
+  </table></div>
+
+  <h3 class="sub">The Two Deployment Sources — Legacy vs Modern</h3>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">Branch-based deployment (legacy)</div>
+      <p>Source: a specific branch (e.g., <code class="inl">gh-pages</code> or <code class="inl">main /docs</code> folder).</p>
+      <p>Problems: no visibility into how the site was built, no CI gate before deploy, no OIDC, files must be committed into the branch manually or via a separate script, no concurrency control.</p>
+      <p>Still works but not recommended for new projects.</p>
+    </div>
+    <div class="ba-col good">
+      <div class="label">GitHub Actions deployment (modern)</div>
+      <p>Source: a GitHub Actions workflow using <code class="inl">actions/upload-pages-artifact</code> + <code class="inl">actions/deploy-pages</code>.</p>
+      <p>Benefits: full CI gate before deploy, OIDC token (no stored credentials), concurrency control, environment protection with optional manual approval, deployment URL shown in PR.</p>
+      <p>Setting: <strong>Settings → Pages → Source: GitHub Actions</strong></p>
+    </div>
+  </div>
+
+  <h3 class="sub">The OIDC Pages Token Flow</h3>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 200" role="img" aria-label="GitHub Pages OIDC deployment flow">
+      <defs><marker id="pga" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L5,3 L0,6 Z" fill="#0284c7"/></marker></defs>
+      <g font-family="Segoe UI,sans-serif">
+        <text x="430" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="#0c2340">GitHub Pages OIDC Deployment — No Stored Credentials</text>
+
+        <rect x="10" y="28" width="140" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="80" y="52" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">pages.yml</text>
+        <text x="80" y="68" text-anchor="middle" font-size="8" fill="#3b5998">build job:</text>
+        <text x="80" y="82" text-anchor="middle" font-size="8" fill="#3b5998">assemble _site/</text>
+        <text x="80" y="96" text-anchor="middle" font-size="8" fill="#3b5998">upload-pages-artifact</text>
+
+        <path d="M150,68 L183,68" stroke="#0284c7" stroke-width="1.5" marker-end="url(#pga)"/>
+
+        <rect x="186" y="28" width="150" height="80" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+        <text x="261" y="52" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">GitHub OIDC</text>
+        <text x="261" y="68" text-anchor="middle" font-size="8" fill="#6d28d9">deploy job starts</text>
+        <text x="261" y="82" text-anchor="middle" font-size="8" fill="#6d28d9">issues short-lived JWT</text>
+        <text x="261" y="96" text-anchor="middle" font-size="8" fill="#6d28d9">id-token: write perm</text>
+
+        <path d="M336,68 L369,68" stroke="#0284c7" stroke-width="1.5" marker-end="url(#pga)"/>
+
+        <rect x="372" y="28" width="150" height="80" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="447" y="52" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">Pages API</text>
+        <text x="447" y="68" text-anchor="middle" font-size="8" fill="#16a34a">verifies JWT</text>
+        <text x="447" y="82" text-anchor="middle" font-size="8" fill="#16a34a">deploy-pages action</text>
+        <text x="447" y="96" text-anchor="middle" font-size="8" fill="#16a34a">uploads artifact</text>
+
+        <path d="M522,68 L555,68" stroke="#0284c7" stroke-width="1.5" marker-end="url(#pga)"/>
+
+        <rect x="558" y="28" width="150" height="80" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+        <text x="633" y="52" text-anchor="middle" font-size="10" font-weight="700" fill="#713f12">CDN Edge</text>
+        <text x="633" y="68" text-anchor="middle" font-size="8" fill="#92400e">site deployed globally</text>
+        <text x="633" y="82" text-anchor="middle" font-size="8" fill="#92400e">HTTPS automatic</text>
+        <text x="633" y="96" text-anchor="middle" font-size="8" fill="#92400e">URL in PR comment</text>
+
+        <path d="M708,68 L741,68" stroke="#16a34a" stroke-width="1.5" marker-end="url(#pga)"/>
+
+        <rect x="744" y="40" width="108" height="56" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+        <text x="798" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="#15803d">Live at:</text>
+        <text x="798" y="76" text-anchor="middle" font-size="8" fill="#16a34a">karthikb35</text>
+        <text x="798" y="88" text-anchor="middle" font-size="8" fill="#16a34a">.github.io/</text>
+
+        <!-- No credentials banner -->
+        <rect x="10" y="125" width="840" height="26" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+        <text x="430" y="142" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">No GitHub token, no deploy key, no PAT stored anywhere. JWT expires when job ends.</text>
+      </g>
+    </svg>
+    <figcaption>Figure 8.2 — GitHub Pages OIDC deployment. The <code>deploy-pages</code> action receives a short-lived JWT from GitHub's OIDC endpoint and exchanges it for a Pages deployment token. No credentials are stored in secrets. The artifact (your HTML files) is uploaded and served globally over HTTPS — automatically.</figcaption>
+  </figure>
+
+  <h3 class="sub">Complete pages.yml — Annotated</h3>
+
+  <pre><span class="cmt"># .github/workflows/pages.yml — full annotated reference</span>
+<span class="k">name</span>: GitHub Pages — Study-Guide Site
+
+<span class="k">on</span>:
+  push:
+    branches: [main]
+    paths:
+      - <span class="s">"study-guide/**"</span>          <span class="cmt"># only run when books change</span>
+      - <span class="s">".github/workflows/pages.yml"</span>
+  workflow_dispatch:            <span class="cmt"># manual trigger for first deploy</span>
+
+<span class="cmt"># cancel-in-progress: false  → Pages deploys QUEUE, never cancel</span>
+<span class="cmt"># (unlike CI checks which cancel stale runs on new push)</span>
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+<span class="cmt"># Minimum permissions for OIDC Pages deployment</span>
+permissions:
+  contents: read   <span class="cmt"># read the repo</span>
+  pages: write     <span class="cmt"># upload Pages artifact</span>
+  id-token: write  <span class="cmt"># request OIDC JWT</span>
+
+jobs:
+  build:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">timeout-minutes</span>: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble _site/
+        run: |
+          mkdir -p _site
+          cp study-guide/devops-path.css _site/
+          cp study-guide/book-*.html     _site/
+          cp study-guide/The-DevOps-Path.html _site/
+
+      - name: Generate index.html
+        run: python study-guide/build_index.py _site/
+
+      <span class="cmt"># upload-pages-artifact packages _site/ as a Pages artifact</span>
+      <span class="cmt"># It must be a flat directory of static files (no symlinks)</span>
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    <span class="k">needs</span>: build
+    <span class="k">if</span>: github.event_name != <span class="s">'pull_request'</span>  <span class="cmt"># no deploy on PRs</span>
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">timeout-minutes</span>: 5
+
+    <span class="cmt"># 'github-pages' is a RESERVED environment name.</span>
+    <span class="cmt"># GitHub creates it automatically when you enable Pages via Actions.</span>
+    <span class="cmt"># You can add protection rules to it in Settings → Environments.</span>
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}  <span class="cmt"># shown in PR</span>
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+        <span class="cmt"># This is the only step needed — the action handles the</span>
+        <span class="cmt"># OIDC token exchange with the Pages API internally.</span></pre>
+
+  <h3 class="sub">All GitHub Pages Settings — Where to Find Them</h3>
+
+  <table>
+    <tr><th>Setting</th><th>Location</th><th>What to configure</th></tr>
+    <tr><td>Enable Pages</td><td>Settings → Pages → Source</td><td>Select <strong>GitHub Actions</strong> (not "Deploy from branch")</td></tr>
+    <tr><td>Custom domain</td><td>Settings → Pages → Custom domain</td><td>Enter <code class="inl">docs.yourdomain.com</code>; add CNAME DNS record pointing to <code class="inl">karthikb35.github.io</code></td></tr>
+    <tr><td>Enforce HTTPS</td><td>Settings → Pages → Enforce HTTPS</td><td>Always on for <code class="inl">*.github.io</code> domains; required for custom domains after cert issues</td></tr>
+    <tr><td>Pages environment</td><td>Settings → Environments → github-pages</td><td>Add protection rules: required reviewers, deployment branches (main only)</td></tr>
+    <tr><td>Visibility (private)</td><td>Settings → Pages → Visibility</td><td>GitHub Enterprise/Teams only: restrict to org members</td></tr>
+    <tr><td>Deployment URL</td><td>Actions tab → pages build workflow</td><td>Shows live URL after each deploy; also in PR "Deployments" panel</td></tr>
+  </table>
+
+  <h3 class="sub">Custom Domain — Step by Step</h3>
+
+  <pre><span class="cmt"># Step 1: Create CNAME file in the _site/ directory</span>
+<span class="cmt"># (or in study-guide/ if it's a static file)</span>
+echo <span class="s">"devops.karthikb35.dev"</span> > study-guide/CNAME
+<span class="cmt"># The CNAME file tells GitHub Pages which custom domain to serve.</span>
+<span class="cmt"># The pages.yml build step must copy it: cp study-guide/CNAME _site/</span>
+
+<span class="cmt"># Step 2: Add DNS records at your registrar:</span>
+<span class="cmt"># For an apex domain (example.com):</span>
+<span class="cmt">#   A     example.com     →  185.199.108.153</span>
+<span class="cmt">#   A     example.com     →  185.199.109.153</span>
+<span class="cmt">#   A     example.com     →  185.199.110.153</span>
+<span class="cmt">#   A     example.com     →  185.199.111.153</span>
+<span class="cmt"># For a subdomain (docs.example.com):</span>
+<span class="cmt">#   CNAME docs.example.com  →  karthikb35.github.io</span>
+
+<span class="cmt"># Step 3: GitHub UI → Settings → Pages → Custom domain</span>
+<span class="cmt"># Enter the domain. GitHub will verify DNS propagation (can take 24h).</span>
+<span class="cmt"># GitHub auto-provisions a Let's Encrypt SSL certificate.</span>
+
+<span class="cmt"># Step 4: Verify in Settings → Pages → "Enforce HTTPS" is checked</span></pre>
+
+  <h3 class="sub">Three Real Deployment Scenarios</h3>
+
+  <dl class="gloss">
+    <dt>Scenario A — Study guide site (this repo)</dt>
+    <dd>Trigger: push to <code class="inl">main</code> when <code class="inl">study-guide/**</code> changes. Build: copy HTML + CSS → <code class="inl">_site/</code> → generate <code class="inl">index.html</code>. Deploy: <code class="inl">actions/deploy-pages@v4</code>. URL: <code class="inl">karthikb35.github.io/DevOps-Path</code>. No custom domain needed for a study repo.</dd>
+
+    <dt>Scenario B — Python library documentation (Sphinx/MkDocs)</dt>
+    <dd>Trigger: push to <code class="inl">main</code> when <code class="inl">docs/**</code> or <code class="inl">src/**</code> changes. Build: <code class="inl">uv run mkdocs build</code> → output to <code class="inl">site/</code>. Deploy: upload <code class="inl">site/</code> as Pages artifact. Custom domain: <code class="inl">docs.mylib.io</code>. Add CNAME file during build step.</dd>
+
+    <dt>Scenario C — API reference (auto-generated)</dt>
+    <dd>Trigger: push to <code class="inl">main</code> (any file change — API may have changed). Build: run OpenAPI generator → static HTML. Deploy: Pages. Gates: test suite must pass first (<code class="inl">needs: test</code> before <code class="inl">build</code>). Ensures the API reference always reflects working code.</dd>
+  </dl>
+
+  <h3 class="sub">Environment Protection for Pages</h3>
+
+  <pre><span class="cmt"># Settings → Environments → github-pages → Configure</span>
+
+<span class="cmt">Required reviewers:</span>
+  <span class="cmt">Add: karthikb35</span>
+  <span class="cmt"># Before the site deploys, GitHub emails karthikb35 to approve.</span>
+  <span class="cmt"># Useful for: public-facing sites where wrong content = embarrassment.</span>
+
+<span class="cmt">Deployment branches:</span>
+  <span class="cmt">Only protected branches → main</span>
+  <span class="cmt"># Prevents a feature branch from accidentally deploying to the live site.</span>
+
+<span class="cmt">Wait timer: 5 minutes</span>
+  <span class="cmt"># Adds a buffer between CI passing and site going live.</span>
+  <span class="cmt"># Gives time to spot a bad content change and cancel.</span></pre>
+
+  <div class="box gotcha"><span class="ic">⚠️</span><div class="h">Gotcha — Pages ignores files starting with underscore</div>
+  <p>Jekyll (the default GitHub Pages processor) skips all directories starting with <code class="inl">_</code> (like <code class="inl">_site/</code>, <code class="inl">_posts/</code>). When using <strong>GitHub Actions deployment</strong>, Jekyll does NOT run — your files are served exactly as uploaded. But if you accidentally have a <code class="inl">_config.yml</code> in the root, GitHub may try to run Jekyll and transform your files. The safe pattern: (a) Use Actions deployment (not branch deployment), (b) Don't have a <code class="inl">_config.yml</code> unless you want Jekyll, (c) Add a <code class="inl">.nojekyll</code> file to the <code class="inl">_site/</code> directory during build to explicitly disable Jekyll processing.</p>
+  <pre>echo "" > _site/.nojekyll  <span class="cmt"># add this to the build step</span></pre></div>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: FastAPI's Documentation on GitHub Pages</div>
+  <p>FastAPI's documentation site (<a href="https://fastapi.tiangolo.com">fastapi.tiangolo.com</a>) is built with MkDocs and deployed to GitHub Pages on every commit to <code class="inl">master</code>. The workflow: <code class="inl">pip install mkdocs-material</code> → <code class="inl">mkdocs build</code> → deploy. The site has millions of monthly visitors, served entirely from GitHub's CDN. Cost: zero hosting infrastructure. Turnaround: documentation updates are live in under 2 minutes of merging a PR. This is the production-scale proof that GitHub Pages handles significant traffic without any configuration.</p></div>
+
+  <h3 class="sub">Troubleshooting Common Pages Failures</h3>
+
+  <table>
+    <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+    <tr><td>404 on all pages</td><td>Pages not enabled or wrong source</td><td>Settings → Pages → Source: GitHub Actions; re-run workflow</td></tr>
+    <tr><td>CSS/images missing</td><td>Relative paths wrong for project site base URL</td><td>Add <code class="inl">&lt;base href="/DevOps-Path/"&gt;</code> or use absolute paths</td></tr>
+    <tr><td>Merge button blocks after Pages required check</td><td>Build job failed but deploy job is the required check</td><td>Make the <code class="inl">build</code> job the required check, not <code class="inl">deploy</code></td></tr>
+    <tr><td>Custom domain reverts to default</td><td>CNAME file not committed / not copied to <code class="inl">_site/</code></td><td>Add <code class="inl">cp study-guide/CNAME _site/</code> to build step</td></tr>
+    <tr><td>Jekyll transforms HTML unexpectedly</td><td>Jekyll running despite Actions deployment</td><td>Add <code class="inl">echo "" > _site/.nojekyll</code> to build step</td></tr>
+    <tr><td>Deploy hangs waiting for approval</td><td>Environment protection with required reviewers</td><td>Check Settings → Environments → github-pages → Pending deployments</td></tr>
+  </table>
+
+  <!-- ══════ 9 · COMPLETE SETUP ══════ -->
+  <h2 class="sec" id="s9">9 · The Complete Setup Walkthrough</h2>
+
+  <h3 class="sub">Step 1: Install pre-commit hook (local developer experience)</h3>
+  <pre><span class="cmt"># .pre-commit-config.yaml</span>
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+<span class="cmt"># Install:</span>
+pip install pre-commit
+pre-commit install
+<span class="cmt"># Now ruff runs on every 'git commit' — catches issues before they reach CI</span></pre>
+
+  <h3 class="sub">Step 2: Push CI and Pages workflows</h3>
+  <pre><span class="cmt"># Both workflows are already created in .github/workflows/</span>
+<span class="cmt"># ci.yml    — lint, isort, test, yaml-lint, secret-scan</span>
+<span class="cmt"># pages.yml — build HTML site, deploy to GitHub Pages</span>
+
+<span class="cmt"># Enable GitHub Pages in repo settings FIRST:</span>
+<span class="cmt"># Settings → Pages → Source: "GitHub Actions" (not Deploy from branch)</span>
+
+git add .github/workflows/ci.yml .github/workflows/pages.yml
+git add ruff.toml pyproject.toml tests/ .github/CODEOWNERS
+git commit -m "ci: add lint, protection tests, pages CI, CODEOWNERS"
+git push origin main</pre>
+
+  <h3 class="sub">Step 3: Trigger first CI run (creates status check names)</h3>
+  <pre><span class="cmt"># Open a PR to trigger CI and create the status check names:</span>
+git checkout -b ci/setup-verification
+echo "# CI verification" >> README.md
+git add README.md && git commit -m "test: trigger initial CI run"
+git push origin ci/setup-verification
+<span class="cmt"># Open PR on GitHub. Wait for CI jobs to run.</span>
+<span class="cmt"># Status checks are now available in branch protection settings.</span></pre>
+
+  <h3 class="sub">Step 4: Configure branch protection with named required checks</h3>
+  <pre><span class="cmt"># GitHub UI: Settings → Branches → Edit 'main' rule</span>
+<span class="cmt"># ✅ Require PR, 1 review, dismiss stale, require Code Owners</span>
+<span class="cmt"># ✅ Require status checks:</span>
+<span class="cmt">#    Search: "Lint & Format (ruff)"           → Add</span>
+<span class="cmt">#    Search: "Import Order (isort via ruff)"  → Add</span>
+<span class="cmt">#    Search: "Protection Tests (pytest)"      → Add</span>
+<span class="cmt">#    Search: "YAML Lint (workflows)"          → Add</span>
+<span class="cmt">#    Search: "Secret Detection"               → Add</span>
+<span class="cmt">#    Search: "Build Pages site"               → Add</span>
+<span class="cmt"># ✅ Do not allow bypassing (include administrators)</span>
+<span class="cmt"># ✅ Linear history</span>
+<span class="cmt"># Save</span></pre>
+
+  <h3 class="sub">Step 5: Verify enforcement with a test violation</h3>
+  <pre><span class="cmt"># Introduce an intentional isort violation:</span>
+echo -e "import json\nimport os\nimport sys\nfrom pathlib import Path\n\nimport yaml" > _test_isort.py
+git add _test_isort.py && git commit -m "test: verify isort enforcement"
+git push origin ci/setup-verification
+<span class="cmt"># Expected: "Import Order (isort via ruff)" check FAILS</span>
+<span class="cmt">#           Merge button is BLOCKED</span>
+
+<span class="cmt"># Fix and verify recovery:</span>
+ruff check --select I --fix .
+rm _test_isort.py
+git add . && git commit -m "fix: cleanup test file" && git push
+<span class="cmt"># Expected: all checks PASS, merge button UNBLOCKS</span></pre>
+
+  <!-- ══════ 10 · INTERVIEW ══════ -->
+
+  <!-- ====== 9 . uv - THE MODERN PYTHON PACKAGE MANAGER ====== -->
+  <h2 class="sec" id="s9">9 &middot; uv &mdash; The Modern Python Package Manager</h2>
+
+  <div class="box analogy"><span class="ic">&#x1F9E0;</span><div class="h">Mental Model &mdash; One Fast Tool Replacing Five Slow Ones</div>
+  <p>Before uv: <code class="inl">pip</code> to install, <code class="inl">pip-tools</code> to lock, <code class="inl">virtualenv</code> to isolate, <code class="inl">poetry</code> to orchestrate, and <code class="inl">pyenv</code> for Python versions. Five tools, five config files, five sources of drift. uv is a single Rust binary that replaces all of them and runs 10&ndash;100&times; faster. Built by Astral (the ruff company) with the same design philosophy: <strong>one opinionated tool that just works, fast.</strong></p></div>
+
+  <div class="def what"><span class="lab">What</span><p>uv manages Python installations, virtual environments, package installation, dependency locking, and project environments &mdash; all from one CLI. All operations share a global cache: installing the same package across 100 projects costs the disk space of one installation.</p></div>
+
+  <div class="def why"><span class="lab">Why uv over pip + pip-tools + virtualenv</span>
+  <table>
+    <tr><th>Operation</th><th>pip ecosystem</th><th>uv</th><th>Speedup</th></tr>
+    <tr><td>Install pandas</td><td>~30s</td><td>~2s</td><td>15&times;</td></tr>
+    <tr><td>Resolve + lock deps</td><td>~45s (pip-tools)</td><td>~3s</td><td>15&times;</td></tr>
+    <tr><td>Create virtual env</td><td>~5s</td><td>~0.1s</td><td>50&times;</td></tr>
+    <tr><td>Full project sync</td><td>~90s (poetry install)</td><td>~4s</td><td>22&times;</td></tr>
+  </table></div>
+
+  <div class="def how"><span class="lab">How &mdash; Key Commands</span>
+  <pre><span class="cmt"># Installation</span>
+curl -LsSf https://astral.sh/uv/install.sh | sh                <span class="cmt"># macOS/Linux</span>
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"     <span class="cmt"># Windows</span>
+pip install uv                                                   <span class="cmt"># via pip</span>
+
+<span class="cmt"># Project environment</span>
+uv sync --dev              <span class="cmt"># reads pyproject.toml, creates .venv, installs all deps</span>
+uv sync --frozen           <span class="cmt"># CI: install exactly what uv.lock specifies</span>
+uv sync --frozen --check   <span class="cmt"># pre-commit: verify lockfile is up-to-date</span>
+uv lock                    <span class="cmt"># regenerate uv.lock after changing pyproject.toml</span>
+
+<span class="cmt"># Running inside the project venv (no manual activate needed)</span>
+uv run pytest tests/       <span class="cmt"># run tests in the managed venv</span>
+uv run ruff check .        <span class="cmt"># lint in the managed venv</span>
+uv run pre-commit install  <span class="cmt"># install pre-commit hooks via uv</span>
+
+<span class="cmt"># Tool management (global, not per-project)</span>
+uv tool install ruff       <span class="cmt"># install ruff as a global CLI tool</span>
+uvx ruff check .           <span class="cmt"># run ruff ephemerally (no install)</span>
+uvx --from yamllint yamllint .github/</pre></div>
+
+  <div class="def when"><span class="lab">When to use each command</span>
+  <dl class="gloss">
+    <dt><code class="inl">uv sync --dev</code></dt><dd>First checkout. Installs all dependencies including dev tools. Creates .venv automatically.</dd>
+    <dt><code class="inl">uv sync --frozen</code></dt><dd>In CI. Reproducible: uses exact lockfile, no network resolution step.</dd>
+    <dt><code class="inl">uv run ...</code></dt><dd>Running any command that needs the project venv. No manual activate/deactivate.</dd>
+    <dt><code class="inl">uvx ...</code></dt><dd>One-off tool execution without installing. Like <code class="inl">npx</code> for Python.</dd>
+  </dl></div>
+
+  <h3 class="sub">uv + pre-commit in This Repository</h3>
+  <pre><span class="cmt"># .pre-commit-config.yaml (managed via uv run pre-commit)</span>
+
+<span class="cmt"># Option A: official ruff-pre-commit hooks (recommended for ruff)</span>
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.5.7
+  hooks:
+    - id: ruff
+      args: [--fix, --exit-non-zero-on-fix]
+    - id: ruff-format
+
+<span class="cmt"># Option B: local hooks via uv run (uses project venv)</span>
+- repo: local
+  hooks:
+    - id: pytest-fast
+      name: pytest (via uv)
+      language: system
+      entry: uv run pytest tests/ -q --tb=short
+      pass_filenames: false
+      stages: [pre-push]   <span class="cmt"># slow; only runs on git push</span>
+
+<span class="cmt"># Install all hooks:</span>
+uv run pre-commit install                          <span class="cmt"># commit hook</span>
+uv run pre-commit install --hook-type pre-push    <span class="cmt"># push hook</span>
+uv run pre-commit run --all-files                 <span class="cmt"># manual run</span></pre>
+
+  <h3 class="sub">uv in CI</h3>
+  <pre><span class="cmt"># In .github/workflows/ci.yml</span>
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-python@v5
+    with: { python-version: "3.11", cache: pip }
+
+  - name: Install uv
+    run: pip install uv
+
+  - name: Sync dev dependencies
+    run: uv sync --dev --frozen   <span class="cmt"># reproducible: exact lockfile</span>
+
+  - name: Run tests
+    run: uv run pytest tests/ -v --tb=short
+
+  - name: Lint (ephemeral uvx)
+    run: uvx ruff check . --output-format=github</pre>
+
+  <div class="box insight"><span class="ic">&#x1F50E;</span><div class="h">Commit uv.lock to Git &mdash; it is the reproducibility contract</div>
+  <p>The <code class="inl">uv.lock</code> file specifies the exact version and SHA hash of every package (including transitive dependencies). Without it: <code class="inl">uv sync</code> resolves fresh every run, which can produce different results on different Python patch versions. With it: every developer, every CI run, every Docker build uses an identical dependency graph. Add <code class="inl">uv.lock</code> to Git &mdash; add <code class="inl">.venv/</code> to .gitignore.</p></div>
+
+  <div class="box scenario"><span class="ic">&#x1F30D;</span><div class="h">Real-World: FastAPI migrated to uv in 2024</div>
+  <p>FastAPI's development environment moved from <code class="inl">pip + hatch</code> to <code class="inl">uv</code> in 2024. Their CI dependency install step went from ~45 seconds to ~3 seconds. Pre-commit hooks run ruff via <code class="inl">uvx</code> &mdash; no separate ruff installation needed. The key benefit: contributors clone the repo, run <code class="inl">uv sync --dev</code>, and are immediately in a perfectly reproducible environment with the exact same tool versions as CI.</p></div>
+
+  <h2 class="sec" id="s10">10 · Senior Architect Interview Questions</h2>
+
+  <div class="qa"><div class="q">Q1 · Describe the difference between a required status check and a pre-commit hook. Which is stronger, and why?</div>
+  <p>A pre-commit hook runs locally on the developer's machine and can be bypassed with <code class="inl">git commit --no-verify</code>. It provides fast feedback but is advisory. A required status check is enforced by GitHub's server-side API: if the check is failing, the merge button is disabled regardless of who is merging or what flags they use. The GitHub API enforcement is categorically stronger because it cannot be bypassed client-side. The correct pattern is both: pre-commit for developer speed (catches issues before they reach CI) and required status checks for repo safety (catches issues that bypass pre-commit).</p></div>
+
+  <div class="qa"><div class="q">Q2 · A team says "CI checks slow us down." How do you respond?</div>
+  <p>First, diagnose whether the complaint is about speed or about false failures. If speed: measure the actual wall time — most linting should complete in under 3 minutes, and the parallelism in the CI workflow means lint + tests + security all run simultaneously. If the slowness is tests, the right fix is faster tests (ruff replaces 5 tools with 1; protection tests run in seconds). If the complaint is false failures (flaky tests), fix the flakiness immediately — it erodes trust in all checks. The senior answer: "CI checks don't slow you down; they prevent the 4-hour incident caused by a 30-second fix that wasn't reviewed. The constraint is the value."</p></div>
+
+  <div class="qa"><div class="q">Q3 · Your company has 50 repositories. How do you enforce branch protection rules consistently across all of them?</div>
+  <p>GitHub Organization-level Rulesets (available in GitHub Teams/Enterprise). Instead of configuring branch protection per-repo, org owners define rulesets at the organization level that push down to all repositories. Repository admins cannot override org-level rulesets. This means: security team defines the minimum required checks, review count, and admin inclusion once — and every new repo automatically inherits it. Individual repos can add stricter rules on top of the baseline, but cannot remove the org-level minimum. For the open-source alternative: Terraform + the GitHub provider can manage branch protection as code, with PRs required to change it.</p></div>
+
+  <div class="qa"><div class="q">Q4 · A senior engineer argues that requiring their own CODEOWNER review on their own PRs is redundant. What's your response?</div>
+  <p>Two points: (1) Technically, CODEOWNER review requires someone else's approval — a CODEOWNER cannot approve their own PR when they are the author. GitHub enforces this. (2) More importantly, the review requirement is for <em>accountability</em>, not for the author's benefit. When you change the CI pipeline, you're changing a shared resource that affects every engineer on the team. The requirement that an expert reviews that change is not a comment on the author's competence — it's an acknowledgment that critical shared infrastructure deserves a second pair of eyes. This is the same principle as requiring two-key authorization for critical operations: not because either person is untrustworthy, but because the stakes justify the process.</p></div>
+
+  <div class="qa"><div class="q">Q5 · How do you handle the "bootstrap problem" — you can't add a required check until it has run at least once?</div>
+  <p>Two approaches: (1) Pragmatic: merge the CI workflow file directly to main (without the required check configured), let it run once on a simple PR, then add the required check. The check now exists in GitHub's system and can be required. (2) Principled: use a workflow_dispatch trigger on the CI workflow to run it manually against main without a PR — this creates the status check entry. Then add it to branch protection. For a new repository, approach (1) is acceptable since the required checks don't exist yet. For an existing repository, approach (2) avoids the awkward "merge without protection" step.</p></div>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>Social contracts fail under pressure; technical enforcement doesn't. Configure required checks and "Include administrators"</li>
+    <li>The check name in branch protection settings must exactly match the <code class="inl">name:</code> field in the CI job YAML</li>
+    <li>CODEOWNERS maps patterns to reviewers; combined with "Require Code Owner review" it becomes a hard gate</li>
+    <li>Ruff replaces flake8 + isort + bandit + black + pyupgrade with one binary, one config, ~200ms run time</li>
+    <li>Separate isort as its own required check — cleaner failure messages, independent gating</li>
+    <li>Protection tests check the repo's structural health: notebook JSON, workflow timeouts, CODEOWNERS existence</li>
+    <li>GitHub Pages uses OIDC — same pattern as AWS, no stored credentials, expires after job</li>
+    <li>Bootstrap order: push CI → trigger first run → add required checks in settings → verify with intentional violation</li>
+  </ul></div>
+
+</section>
+</body>
+</html>

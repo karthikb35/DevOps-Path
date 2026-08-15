@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Monitoring &amp; Observability — The DevOps Architect's Path, Book VII</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book VII · Edition 2026</div>
+    <h1>Monitoring &amp;<br>Observability</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">the three pillars of observability</strong> to <strong style="color:#8ff4ee">SLO-driven alerting that wakes you for the right reasons</strong>. The difference between knowing a system is broken and knowing <em>why</em> — before users tell you.</div>
+    <div class="stackrow">📊 Metrics · 📝 Logs · 🔍 Traces · 🎯 SLOs · 🔔 Alerting</div>
+    <div class="badges">
+      <span class="badge">📊 Prometheus &amp; Grafana</span><span class="badge">📝 ELK structured logs</span>
+      <span class="badge">🔍 Distributed tracing</span><span class="badge">🎯 SLO / Error Budget</span>
+      <span class="badge">🔔 Multi-window alerting</span><span class="badge">🛠️ On-call framework</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Observe before you deploy.</strong><br>Companion notebooks in <code style="color:#cfe0d6">07-monitoring-observability/</code>.</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">The Three Pillars — Logs, Metrics, Traces</div><div class="dd">Why each exists · what each answers · correlation is the superpower</div></div><span class="ic">🔭</span></li>
+    <li><span class="n">2</span><div><div class="tt">SLOs, SLIs, SLAs — The Language of Reliability</div><div class="dd">Error budget · burn rate · multi-window alerting · the Google SRE model</div></div><span class="ic">🎯</span></li>
+    <li><span class="n">3</span><div><div class="tt">Prometheus — Pull-Based Metrics</div><div class="dd">Architecture · PromQL · recording rules · alerting rules · Thanos</div></div><span class="ic">📊</span></li>
+    <li><span class="n">4</span><div><div class="tt">Grafana — Visualization and Alerting</div><div class="dd">Dashboards · panels · alert routing · on-call integrations</div></div><span class="ic">📈</span></li>
+    <li><span class="n">5</span><div><div class="tt">The ELK Stack — Log Aggregation</div><div class="dd">Fluent Bit → Elasticsearch → Kibana · structured logging · ILM</div></div><span class="ic">📝</span></li>
+    <li><span class="n">6</span><div><div class="tt">Distributed Tracing — OpenTelemetry</div><div class="dd">Spans · context propagation · Jaeger · sampling strategies</div></div><span class="ic">🔍</span></li>
+    <li><span class="n">7</span><div><div class="tt">The On-Call Engineer's Framework</div><div class="dd">Alert → triage → mitigate → investigate → fix → post-mortem</div></div><span class="ic">🛠️</span></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">📊</div>
+    <div><div class="t">Monitoring &amp; Observability</div>
+    <div class="s">The difference between a 5-minute incident and a 5-hour incident is almost always the quality of your observability</div></div>
+    <div class="ico">🔭</div>
+  </div>
+
+  <p class="lead">Monitoring tells you <em>that</em> something is broken. Observability tells you <em>why</em> — from outside the system, by examining its outputs, without adding new code. These are distinct capabilities requiring different data. The three pillars (metrics, logs, traces) answer different questions. Together, correlated by a shared trace ID, they reduce mean-time-to-resolution from hours to minutes.</p>
+
+  <h2 class="sec" id="s1">1 · The Three Pillars</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Three Different Instruments for the Same System</div>
+  <p>A metrics dashboard is a car's dashboard — it shows speed, fuel, temperature at a glance. Logs are the car's event recorder — "warning: oil low at 14:23:07". Traces are the GPS route replay — "the journey from A to B took 847ms; 820ms was spent on the highway (Stripe API)." You need all three to understand a complex journey. The metric tells you you're late; the trace tells you where the bottleneck was; the log tells you why the highway was slow.</p></div>
+
+  <table>
+    <tr><th>Pillar</th><th>Question it answers</th><th>Form</th><th>Primary tool</th></tr>
+    <tr><td><strong>Metrics</strong></td><td>What is happening right now at system level?</td><td>Time-series numbers</td><td>Prometheus, Datadog, CloudWatch</td></tr>
+    <tr><td><strong>Logs</strong></td><td>What happened and what was the context?</td><td>Timestamped event records (JSON)</td><td>ELK Stack, Loki, Splunk</td></tr>
+    <tr><td><strong>Traces</strong></td><td>How did this specific request travel through the system?</td><td>Spans with parent-child relationships</td><td>Jaeger, Zipkin, Datadog APM</td></tr>
+  </table>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Correlation: the superpower that makes all three 10× more valuable</div>
+  <p>The three pillars become exponentially more powerful when they are correlated via a shared <code class="inl">trace_id</code>:</p>
+  <ol style="margin:4px 0; padding-left:20px;">
+    <li>Metric alert fires: p99 latency &gt;500ms on payment-service</li>
+    <li>Dashboard shows: spike started at 14:23 UTC</li>
+    <li>Jump to logs: filter <code class="inl">service=payment-service timestamp=14:23</code></li>
+    <li>Log shows: Stripe timeout errors, <code class="inl">trace_id=abc123def456</code></li>
+    <li>Jump to trace <code class="inl">abc123def456</code>: Stripe API call took 820ms of the 847ms total</li>
+    <li>Root cause: Stripe API latency spike. Fix: circuit breaker with fallback</li>
+  </ol>
+  <p><strong>Time to root cause with correlation: 5 minutes. Without: 2+ hours of log grepping.</strong> This is why every log entry must include <code class="inl">trace_id</code>, and every trace must be linkable to metrics.</p></div>
+
+  <h2 class="sec" id="s2">2 · SLOs, SLIs, SLAs — The Language of Reliability</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Budget You're Allowed to Spend on Failures</div>
+  <p>Your SLO says "99.9% availability." That means you're <em>allowed</em> 0.1% failure = 43.8 minutes/month. This is your error budget. You can deploy risky features while you have budget. When your budget is exhausted, you stop shipping features and focus on reliability until the budget resets. This is not punitive — it's a rational model that trades feature velocity for stability automatically, without politics or escalations.</p></div>
+
+  <dl class="gloss">
+    <dt>SLA (Service Level Agreement)</dt>
+    <dd>Contractual commitment to customers. "We guarantee 99.9% availability. If we breach this, you receive credits." The external-facing promise.</dd>
+    <dt>SLO (Service Level Objective)</dt>
+    <dd>Internal target, stricter than SLA. "Our internal target is 99.95% availability." The buffer between SLO and SLA gives you time to react before breaching the SLA.</dd>
+    <dt>SLI (Service Level Indicator)</dt>
+    <dd>The actual measurement used to evaluate the SLO. "Current availability: 99.97% (measured over the last 30 days)."</dd>
+    <dt>Error Budget</dt>
+    <dd>= 1 - SLO = how much you're allowed to fail. 100% - 99.95% = 0.05% of 30 days = 21.6 minutes of allowed downtime per month.</dd>
+  </dl>
+
+  <h3 class="sub">The Four Golden Signals (Google SRE)</h3>
+  <table>
+    <tr><th>Signal</th><th>Measures</th><th>Example SLI</th><th>Example SLO</th></tr>
+    <tr><td><strong>Latency</strong></td><td>How long requests take</td><td>p99 HTTP response time</td><td>p99 &lt; 500ms</td></tr>
+    <tr><td><strong>Traffic</strong></td><td>Demand on the system</td><td>requests per second</td><td>— (used for capacity)</td></tr>
+    <tr><td><strong>Errors</strong></td><td>Failure rate</td><td>% 5xx responses</td><td>&lt; 0.1% error rate</td></tr>
+    <tr><td><strong>Saturation</strong></td><td>How full the system is</td><td>CPU utilisation, queue depth</td><td>CPU &lt; 80%</td></tr>
+  </table>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Multi-Window Burn Rate Alerting — the Google Model</div>
+  <p>Alerting on a single threshold (e.g., error rate &gt; 1%) produces false positives (a 60-second spike in errors isn't an incident). Google's multi-window model is more robust: alert when <em>both</em> a short window (1 hour) AND a long window (6 hours) show high burn rate simultaneously. This combines sensitivity (the 1-hour window catches fast-burning incidents quickly) with specificity (requiring the 6-hour window to also be elevated eliminates transient spikes).</p>
+  <p>Burn rate thresholds from Google SRE book:<br>
+  <strong>Critical (page immediately):</strong> 1h burn rate &gt;14.4× AND 5m burn rate &gt;14.4× → will exhaust monthly budget in 2 hours<br>
+  <strong>Warning (page during business hours):</strong> 6h burn rate &gt;6× AND 1h burn rate &gt;6× → will exhaust monthly budget in 5 days</p></div>
+
+  <h2 class="sec" id="s3">3 · Prometheus — Pull-Based Metrics</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Prometheus Scrapes; It Is Not Pushed To</div>
+  <p>Instead of your application sending metrics to a central server (push), Prometheus periodically requests metrics from your application's <code class="inl">/metrics</code> endpoint (pull). The advantage: if a target goes down, Prometheus immediately knows because the scrape fails. With push-based systems, a dead service just stops sending — and you have no signal. Pull-based systems make absence of data a detectable signal.</p></div>
+
+  <pre><span class="cmt"># ── Add /metrics to a FastAPI service ─────────────────────────</span>
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)  <span class="cmt"># adds GET /metrics</span>
+
+<span class="cmt"># ── Tell Prometheus to scrape it (ServiceMonitor CRD) ─────────</span>
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: payment-service
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: payment-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s</pre>
+
+  <h3 class="sub">Essential PromQL — The Queries Every SRE Knows</h3>
+
+  <pre><span class="cmt"># Error rate (% 5xx) — the most important dashboard query</span>
+sum(rate(http_requests_total{status=~<span class="s">"5.."</span>}[5m])) by (service)
+/
+sum(rate(http_requests_total[5m])) by (service) * 100
+
+<span class="cmt"># p99 latency — what the 99th percentile user experiences</span>
+histogram_quantile(0.99,
+  sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)
+)
+
+<span class="cmt"># OOMKills — pods getting memory-killed</span>
+kube_pod_container_status_last_terminated_reason{reason=<span class="s">"OOMKilled"</span>}
+
+<span class="cmt"># CPU throttling — pods hitting CPU limits (causes latency spikes)</span>
+rate(container_cpu_throttled_seconds_total[5m]) / rate(container_cpu_usage_seconds_total[5m]) * 100
+
+<span class="cmt"># Disk pressure — nodes running out of disk</span>
+(node_filesystem_size_bytes - node_filesystem_avail_bytes)
+/ node_filesystem_size_bytes * 100 &gt; 80</pre>
+
+  <h2 class="sec" id="s5">5 · Structured Logging — The Foundation</h2>
+
+  <div class="ba">
+    <div class="ba-col bad">
+      <div class="label">Unstructured logging — impossible to query at scale</div>
+      <pre style="font-size:8pt"><span class="cmt"># Cannot filter by user_id, amount, or error_code</span>
+logging.error(
+  f"Payment failed for user {user_id}: {str(e)}"
+)
+<span class="cmt"># Log: "Payment failed for user usr_123: Card declined"</span>
+<span class="cmt"># To find all failures: grep (slow, brittle, error-prone)</span></pre>
+    </div>
+    <div class="ba-col good">
+      <div class="label">Structured JSON logging — queryable in ELK/Loki/Datadog</div>
+      <pre style="font-size:8pt"><span class="cmt"># Every field queryable, filterable, aggregatable</span>
+log.error("payment.failed",
+  user_id=user_id, amount=amount,
+  error_code=error.code,
+  stripe_request_id=response.id,
+  trace_id=current_span.trace_id,
+  duration_ms=duration_ms,
+)
+<span class="cmt"># Kibana: error_code='card_declined' AND amount&gt;10000</span>
+<span class="cmt"># → Find all high-value declines in 2 seconds, not 2 hours</span></pre>
+    </div>
+  </div>
+
+  <h2 class="sec" id="s7">7 · The On-Call Engineer's 5-Minute Framework</h2>
+
+  <div class="box bigidea"><span class="ic">🧠</span><div class="h">Alert → Triage → Mitigate → Investigate → Fix → Post-mortem</div>
+  <ol style="margin:6px 0 0; padding-left:20px;">
+    <li><strong>Is it real?</strong> Is the alert flapping? Is this a known false positive? Rule out synthetic test failures.</li>
+    <li><strong>What's the impact?</strong> How many users affected? Which features are broken? Is it total or partial outage?</li>
+    <li><strong>Metrics:</strong> Which services show degradation on dashboards? Since when (compare to deployment times)?</li>
+    <li><strong>Logs:</strong> What errors appear at that timestamp? What's the error_code? Is there a common trace_id?</li>
+    <li><strong>Traces:</strong> Find a slow trace — which service/call is the bottleneck?</li>
+    <li><strong>Correlate:</strong> Did a deployment happen before the incident? Check deployment history first.</li>
+    <li><strong>Mitigate first:</strong> Rollback deployment? Toggle feature flag off? Enable circuit breaker? <em>Restore service before finding root cause.</em></li>
+    <li><strong>Root cause later:</strong> During business hours. Don't debug at 3 AM — mitigate and sleep.</li>
+    <li><strong>Post-mortem:</strong> Blameless. Focus on systemic improvements. What monitoring would have caught this earlier?</li>
+  </ol></div>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: Google's Monarch — 1 Trillion Data Points per Minute</div>
+  <p>Google's internal metrics system (Monarch) processes 1 trillion data points per minute across all Google services. Their distributed tracing system (Dapper) was the inspiration for Jaeger, Zipkin, and the OpenTracing standard. The core insight from Google's SRE book: <strong>"The most important feature of a monitoring system is that it answers: 'Are things working? If not, what's wrong? If I need to fix it, how do I do so quickly?'"</strong> Observability is not about dashboards — it is about the speed at which you can answer those three questions under pressure at 3 AM.</p></div>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>Metrics answer "what", logs answer "why it happened", traces answer "where the slowness is" — you need all three</li>
+    <li>Correlation via trace_id reduces MTTR from hours to minutes</li>
+    <li>SLOs with error budgets are the rational framework for trading feature velocity vs reliability</li>
+    <li>Multi-window burn rate alerting (Google model) reduces false positives dramatically</li>
+    <li>Structured JSON logs are a prerequisite for meaningful log analysis at scale</li>
+    <li>Mitigate first, root-cause second — don't debug at 3 AM, restore service and sleep</li>
+    <li>Post-mortems must be blameless and focus on systemic improvements</li>
+  </ul></div>
+</section>
+</body>
+</html>

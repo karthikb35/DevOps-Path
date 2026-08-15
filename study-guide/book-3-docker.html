@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Docker — The DevOps Architect's Path, Book III</title>
+<link rel="stylesheet" href="devops-path.css">
+</head>
+<body>
+
+<section class="cover">
+  <div>
+    <div class="kicker">The DevOps Architect's Path · Book III · Edition 2026</div>
+    <h1>Docker</h1>
+    <div class="sub">From <strong style="color:#8ff4ee">Linux kernel primitives</strong> to <strong style="color:#8ff4ee">production-hardened container images</strong>. Every concept answered with What, Why, How, and When — plus inline SVG architecture diagrams, real-world case studies, and the security model that separates a good Dockerfile from a dangerous one.</div>
+    <div class="stackrow">🐳 Containers · 🧅 Layers · 🏗️ Multi-stage · 🔐 Security · 🐙 Compose</div>
+    <div class="badges">
+      <span class="badge">🐳 Container vs VM</span>
+      <span class="badge">🧅 Union filesystem</span>
+      <span class="badge">📦 Image layers</span>
+      <span class="badge">🏗️ Multi-stage builds</span>
+      <span class="badge">🔐 Security hardening</span>
+      <span class="badge">🐙 Docker Compose</span>
+      <span class="badge">🚀 CI/CD integration</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div><strong style="color:#eaf2fb">Every anti-pattern has a fix.</strong><br>Companion notebooks in <code style="color:#cfe0d6">03-docker/</code>.</div>
+    <div style="text-align:right">What → Why → How → When<br>Real-world · Before/After · Interview Q&amp;A</div>
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Table of Contents</h2>
+  <div class="rule"></div>
+  <p class="small">Book III of the series — the container is the unit of deployment that connects CI (the pipeline builds it) to Kubernetes (the orchestrator runs it). Understanding Docker at depth — the object model, the layer cache, multi-stage builds, and the security model — directly improves pipeline speed, cluster cost, and production security.</p>
+  <ol>
+    <li><span class="n">1</span><div><div class="tt">Containers vs VMs — Linux Primitives</div><div class="dd">Namespaces · cgroups · the kernel-sharing security implication</div></div><span class="ic">🐳</span></li>
+    <li><span class="n">2</span><div><div class="tt">Docker Architecture</div><div class="dd">Client-Daemon-Registry · containerd · runc · OCI standard</div></div><span class="ic">⚙️</span></li>
+    <li><span class="n">3</span><div><div class="tt">Image Layers — The Union Filesystem</div><div class="dd">Copy-on-write · layer caching · why order matters</div></div><span class="ic">🧅</span></li>
+    <li><span class="n">4</span><div><div class="tt">Dockerfile Deep Dive</div><div class="dd">Every instruction · production best practices · the auditor</div></div><span class="ic">📝</span></li>
+    <li><span class="n">5</span><div><div class="tt">Multi-Stage Builds</div><div class="dd">Builder pattern · size reductions · language comparisons</div></div><span class="ic">🏗️</span></li>
+    <li><span class="n">6</span><div><div class="tt">Security Hardening</div><div class="dd">Non-root · read-only filesystem · capabilities · seccomp</div></div><span class="ic">🔐</span></li>
+    <li><span class="n">7</span><div><div class="tt">Docker Compose — Local Architecture</div><div class="dd">Service dependencies · named volumes · network isolation</div></div><span class="ic">🐙</span></li>
+    <li><span class="n">8</span><div><div class="tt">Docker in CI/CD</div><div class="dd">BuildKit · layer caching in CI · registry workflows</div></div><span class="ic">🔀</span></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <div class="ch-head">
+    <div class="num">🐳</div>
+    <div><div class="t">Docker — From Kernel Primitives to Production Containers</div>
+    <div class="s">The artifact that connects your CI pipeline to your Kubernetes cluster</div></div>
+    <div class="ico">📦</div>
+  </div>
+
+  <p class="lead">A container is not a mini-VM. It is a Linux process (or group of processes) with an isolated view of the OS, enforced by two kernel primitives: <strong>namespaces</strong> (isolation) and <strong>cgroups</strong> (resource limits). Understanding this foundation explains every Docker behaviour — why containers start in milliseconds, why they share the host kernel's attack surface, and why multi-stage builds produce binaries instead of entire OS installations.</p>
+
+  <div class="coderef">
+    <div class="h">📂 Companion code</div>
+    <ul>
+      <li><span class="path">03-docker/docker_mental_models.ipynb</span> — layer cache simulator, Dockerfile auditor, security hardening</li>
+      <li><span class="path">03-docker/examples/01_docker_compose_deep_dive.ipynb</span> — Compose architecture, networking, volume patterns</li>
+      <li><span class="path">03-docker/architectural_notes.md</span> — production trade-offs and the transition to Kubernetes</li>
+    </ul>
+  </div>
+
+  <!-- ══════ 1 · CONTAINERS vs VMs ══════ -->
+  <h2 class="sec" id="s1">1 · Containers vs VMs — Linux Primitives</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — Walled Gardens vs Separate Houses</div>
+  <p>A VM is a separate house with its own foundation (kernel), walls (OS), and utilities. A container is a walled garden on the same property: same foundation (host kernel), separate garden (isolated process view). The garden is much cheaper to build and can be planted/removed instantly. But if the foundation has a problem, it can affect all gardens. VMs provide stronger isolation; containers provide faster, denser packing.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>A container is a process tree running in a set of Linux <em class="term">namespaces</em> with resource constraints enforced by <em class="term">cgroups</em>. There is no separate kernel — the container shares the host kernel. A VM, by contrast, runs a complete guest OS on top of a hypervisor, which emulates hardware. The fundamental difference is: <strong>containers share the kernel; VMs have their own.</strong></p></div>
+
+  <div class="def why"><span class="lab">Why containers over VMs (for most workloads)</span><p>Startup time: milliseconds (process spawn) vs 30–60 seconds (OS boot). Density: 100s of containers per host vs 10s of VMs. Image size: megabytes vs gigabytes. Resource overhead: near-zero (no hypervisor) vs significant (guest OS RAM and CPU). For workloads requiring strict multi-tenant security isolation (e.g., running untrusted third-party code), VMs remain the right choice.</p></div>
+
+  <div class="def how"><span class="lab">How — Linux Primitives Explained</span>
+  <dl class="gloss">
+    <dt>pid namespace</dt><dd>Container has its own PID 1. Processes inside cannot see host PIDs or other containers' PIDs.</dd>
+    <dt>net namespace</dt><dd>Container has its own network stack, IP address, port space. Port 8080 in the container ≠ port 8080 on the host.</dd>
+    <dt>mnt namespace</dt><dd>Container sees a different filesystem tree. The host's <code class="inl">/etc</code> is hidden; the container's <code class="inl">/etc</code> is from its image.</dd>
+    <dt>uts namespace</dt><dd>Container has its own hostname.</dd>
+    <dt>user namespace</dt><dd>Container UID 0 (root) maps to a non-root UID on the host. The foundation of rootless containers.</dd>
+    <dt>cgroups (v2)</dt><dd>Enforces resource limits: CPU (millicores), memory (bytes), block I/O, network bandwidth. If a container exceeds its memory cgroup limit — it's OOMKilled.</dd>
+  </dl></div>
+
+  <div class="def when"><span class="lab">When containers are NOT enough</span><p>Multi-tenant SaaS where tenants run arbitrary code (cloud functions as a service): use VMs (Firecracker microVMs) or gVisor for kernel-level isolation. Containers are appropriate for trusted workloads (your own application code) but not for untrusted code where a kernel exploit could break isolation. AWS Fargate uses Firecracker to give each task its own kernel — the cloud knows this distinction.</p></div>
+
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 220" role="img" aria-label="Container vs VM architecture">
+      <defs><marker id="a4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/></marker></defs>
+      <g font-family="Segoe UI,sans-serif">
+        <!-- VM section -->
+        <text x="210" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="#b45309">VIRTUAL MACHINES</text>
+        <rect x="10" y="24" width="400" height="186" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+        <!-- 3 VMs -->
+        <rect x="20" y="34" width="115" height="130" rx="8" fill="#fef3c7" stroke="#d97706"/>
+        <text x="77" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#92400e">App A</text>
+        <rect x="30" y="62" width="95" height="22" rx="5" fill="#fde68a"/><text x="77" y="78" text-anchor="middle" font-size="8" fill="#713f12">Guest OS (Linux)</text>
+        <rect x="30" y="88" width="95" height="18" rx="5" fill="#fde68a"/><text x="77" y="101" text-anchor="middle" font-size="8" fill="#713f12">Guest Kernel</text>
+        <rect x="30" y="110" width="95" height="18" rx="5" fill="#fde68a"/><text x="77" y="123" text-anchor="middle" font-size="8" fill="#713f12">Virtual Hardware</text>
+        <text x="77" y="158" text-anchor="middle" font-size="8" fill="#b45309">~2GB image</text>
+
+        <rect x="147" y="34" width="115" height="130" rx="8" fill="#fef3c7" stroke="#d97706"/>
+        <text x="204" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#92400e">App B</text>
+        <rect x="157" y="62" width="95" height="22" rx="5" fill="#fde68a"/><text x="204" y="78" text-anchor="middle" font-size="8" fill="#713f12">Guest OS (Windows)</text>
+        <rect x="157" y="88" width="95" height="18" rx="5" fill="#fde68a"/><text x="204" y="101" text-anchor="middle" font-size="8" fill="#713f12">Guest Kernel</text>
+        <rect x="157" y="110" width="95" height="18" rx="5" fill="#fde68a"/><text x="204" y="123" text-anchor="middle" font-size="8" fill="#713f12">Virtual Hardware</text>
+        <text x="204" y="158" text-anchor="middle" font-size="8" fill="#b45309">~4GB image</text>
+
+        <!-- Hypervisor -->
+        <rect x="20" y="172" width="380" height="22" rx="6" fill="#d97706"/><text x="210" y="187" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">Hypervisor (KVM / VMware / Hyper-V)</text>
+        <rect x="20" y="197" width="380" height="10" rx="4" fill="#92400e"/><text x="210" y="206" text-anchor="middle" font-size="7" fill="#fff">Host OS &amp; Kernel — shared</text>
+
+        <!-- CONTAINERS section -->
+        <text x="650" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="#0369a1">CONTAINERS</text>
+        <rect x="450" y="24" width="400" height="186" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <!-- 3 containers -->
+        <rect x="460" y="34" width="115" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="517" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">App A</text>
+        <rect x="470" y="62" width="95" height="22" rx="5" fill="#bfdbfe"/><text x="517" y="78" text-anchor="middle" font-size="8" fill="#1e3a8a">App + Libs only</text>
+        <text x="517" y="110" text-anchor="middle" font-size="8" fill="#1d4ed8">~150MB image</text>
+
+        <rect x="587" y="34" width="115" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="644" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">App B</text>
+        <rect x="597" y="62" width="95" height="22" rx="5" fill="#bfdbfe"/><text x="644" y="78" text-anchor="middle" font-size="8" fill="#1e3a8a">App + Libs only</text>
+        <text x="644" y="110" text-anchor="middle" font-size="8" fill="#1d4ed8">~200MB image</text>
+
+        <rect x="714" y="34" width="115" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="771" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="#1e40af">App C</text>
+        <rect x="724" y="62" width="95" height="22" rx="5" fill="#bfdbfe"/><text x="771" y="78" text-anchor="middle" font-size="8" fill="#1e3a8a">App + Libs only</text>
+        <text x="771" y="110" text-anchor="middle" font-size="8" fill="#1d4ed8">~80MB image</text>
+
+        <!-- Container Runtime -->
+        <rect x="460" y="120" width="380" height="22" rx="6" fill="#2563eb"/><text x="650" y="135" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">Container Runtime (containerd + runc)</text>
+
+        <!-- Shared kernel -->
+        <rect x="460" y="147" width="380" height="22" rx="6" fill="#1d4ed8"/><text x="650" y="161" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">Host OS Kernel — SHARED ←</text>
+        <rect x="460" y="174" width="380" height="30" rx="6" fill="#1e40af"/><text x="650" y="188" text-anchor="middle" font-size="9" fill="#93c5fd">Namespaces + cgroups provide isolation</text>
+        <text x="650" y="200" text-anchor="middle" font-size="9" fill="#93c5fd">(not a separate kernel — same kernel, different view)</text>
+      </g>
+    </svg>
+    <figcaption>Figure 3.1 — VMs (left) run a full guest OS per application, consuming GBs and taking 30–60s to boot. Containers (right) share the host kernel and package only the application and its libraries — millisecond startup, MB-scale images. The trade-off: containers have weaker isolation because a host kernel vulnerability can affect all containers.</figcaption>
+  </figure>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: AWS Fargate — Containers with VM-level Isolation</div>
+  <p>AWS Fargate gives each container task its own kernel using <strong>Firecracker microVMs</strong> — 125ms boot time, ~5MB memory overhead per microVM, full kernel isolation. This is how AWS runs multi-tenant container workloads safely: containers for density and speed, a separate kernel for isolation. If you are running containers for multiple tenants who could potentially exploit your application, use Fargate or a similar hardened runtime — not plain Docker on a shared kernel.</p></div>
+
+  <!-- ══════ 3 · IMAGE LAYERS ══════ -->
+  <h2 class="sec" id="s3">3 · Image Layers — The Union Filesystem</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — A Stack of Transparent Slides</div>
+  <p>A Docker image is a stack of read-only layers, like stacking transparent slides. Each layer adds or modifies content. When you read a file, Docker looks down through the stack until it finds it. When you write a file in a running container, the write goes to a new writable layer at the top (copy-on-write). The genius: identical layers are shared. Ten containers running nginx:1.25 share a single copy of the nginx layer in memory and on disk — not ten copies.</p></div>
+
+  <div class="def what"><span class="lab">What</span><p>An image is a sequence of immutable, content-addressed layers stored as tar archives. The container runtime assembles them into a unified filesystem view using OverlayFS (the default driver on modern Linux). Each layer is identified by a digest (SHA-256 of its content). The same digest = the same layer = deduplicated storage across all images and all containers on the host.</p></div>
+
+  <div class="def how"><span class="lab">How — Cache Invalidation Rule</span>
+  <p>Docker rebuilds a layer when its content changes. Since each layer builds on the previous, <strong>if any layer changes, all layers below it must rebuild</strong>. This is the single most important rule for Dockerfile optimisation:</p>
+  <pre><span class="cmt"># ❌ SLOW: code change → pip install runs every time (90 seconds!)</span>
+<span class="k">FROM</span> <span class="s">python:3.11-slim</span>
+<span class="k">COPY</span> . /app              <span class="cmt"># ← copies ALL files first</span>
+<span class="k">RUN</span> pip install -r /app/requirements.txt  <span class="cmt"># ← ALWAYS rebuilds</span>
+
+<span class="cmt"># ✅ FAST: code change → only COPY layer rebuilds (2 seconds!)</span>
+<span class="k">FROM</span> <span class="s">python:3.11-slim</span>
+<span class="k">COPY</span> requirements.txt /app/  <span class="cmt"># ← only lockfile (rarely changes)</span>
+<span class="k">RUN</span> pip install -r /app/requirements.txt  <span class="cmt"># ← cached unless req changes</span>
+<span class="k">COPY</span> . /app              <span class="cmt"># ← code last (frequent changes)</span></pre>
+  <p><strong>Rule:</strong> most-stable instruction → top. most-frequently changing → bottom.</p></div>
+
+  <h3 class="sub">Layer Composition Visualised</h3>
+  <figure class="fig-card">
+    <svg viewBox="0 0 860 190" role="img" aria-label="Docker image layers">
+      <g font-family="Segoe UI,sans-serif">
+        <text x="430" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="#0c2340">Image: myapp:latest — 284 MB total (layers deduplicated in registry and on disk)</text>
+        <!-- Layer stack -->
+        <rect x="20" y="28" width="820" height="28" rx="6" fill="#fee2e2" stroke="#ef4444"/>
+        <text x="430" y="48" text-anchor="middle" font-size="9.5" font-weight="700" fill="#991b1b">COPY . /app  →  8 MB  ← YOUR CODE  (changes most often — put last)</text>
+
+        <rect x="20" y="58" width="820" height="28" rx="6" fill="#fef3c7" stroke="#d97706"/>
+        <text x="430" y="78" text-anchor="middle" font-size="9.5" font-weight="700" fill="#92400e">RUN pip install -r requirements.txt  →  150 MB  (changes on dep updates only)</text>
+
+        <rect x="20" y="88" width="820" height="28" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+        <text x="430" y="108" text-anchor="middle" font-size="9.5" font-weight="700" fill="#14532d">COPY requirements.txt /app/  →  1 KB  (changes when deps change)</text>
+
+        <rect x="20" y="118" width="820" height="28" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+        <text x="430" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1e40af">RUN apt-get install curl  →  5 MB  (changes rarely)</text>
+
+        <rect x="20" y="148" width="820" height="28" rx="6" fill="#ede9fe" stroke="#7c3aed"/>
+        <text x="430" y="168" text-anchor="middle" font-size="9.5" font-weight="700" fill="#5b21b6">FROM python:3.11.9-slim-bookworm  →  127 MB  BASE IMAGE  (pinned, changes monthly)</text>
+
+        <!-- arrow -->
+        <text x="845" y="80" font-size="11" fill="#64748b">↑</text>
+        <text x="845" y="94" font-size="8" fill="#64748b">top</text>
+        <text x="845" y="165" font-size="11" fill="#64748b">↓</text>
+        <text x="842" y="178" font-size="8" fill="#64748b">base</text>
+      </g>
+    </svg>
+    <figcaption>Figure 3.2 — Layer order from bottom (most stable) to top (most frequently changed). If the code changes (top layer), only that layer rebuilds — the 150 MB pip install layer is cached. If requirements.txt changes, pip install and COPY layers rebuild. If only the base image changes, everything rebuilds — which is why Dependabot for base images is critical.</figcaption>
+  </figure>
+
+  <!-- ══════ 4 · DOCKERFILE ══════ -->
+  <h2 class="sec" id="s4">4 · Dockerfile Deep Dive</h2>
+
+  <div class="def what"><span class="lab">What</span><p>A Dockerfile is a recipe for building a Docker image. Each instruction (<code class="inl">FROM</code>, <code class="inl">RUN</code>, <code class="inl">COPY</code>, <code class="inl">CMD</code>) creates a layer. The Dockerfile is the source of truth for the deployment artifact — treat it like application code: review it, lint it (Hadolint), and audit it for security.</p></div>
+
+  <pre><span class="cmt"># ✅ PRODUCTION DOCKERFILE — Python service, every decision explained</span>
+
+<span class="cmt"># ── Stage 1: Builder ────────────────────────────────────────────</span>
+<span class="k">FROM</span> python:3.11.9-slim-bookworm <span class="k">AS</span> builder   <span class="cmt"># ✓ exact version, slim = smaller</span>
+<span class="k">WORKDIR</span> /build
+
+<span class="cmt"># ✓ Install build tools in builder only — they never reach the final image</span>
+<span class="k">RUN</span> apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+    gcc libpq-dev \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*   <span class="cmt"># ✓ clean cache IN SAME LAYER</span>
+
+<span class="k">COPY</span> requirements.txt .             <span class="cmt"># ✓ lockfile first (stable layer)</span>
+<span class="k">RUN</span> pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+<span class="cmt"># ── Stage 2: Runtime ────────────────────────────────────────────</span>
+<span class="k">FROM</span> python:3.11.9-slim-bookworm <span class="k">AS</span> runtime   <span class="cmt"># ✓ same base, no build tools</span>
+
+<span class="cmt"># ✓ Non-root user — CRITICAL for security</span>
+<span class="k">RUN</span> groupadd --gid 1001 appuser &amp;&amp; \
+    useradd --uid 1001 --gid appuser --shell /bin/bash --create-home appuser
+
+<span class="k">WORKDIR</span> /app
+
+<span class="cmt"># ✓ Copy only compiled packages from builder — not gcc, not build tools</span>
+<span class="k">COPY</span> --from=builder /install /usr/local
+<span class="k">COPY</span> --chown=appuser:appuser src/ ./src/
+<span class="k">COPY</span> --chown=appuser:appuser main.py .
+
+<span class="k">USER</span> appuser   <span class="cmt"># ✓ switch to non-root BEFORE CMD</span>
+
+<span class="cmt"># ✓ Health check — used by Docker and Kubernetes readiness</span>
+<span class="k">HEALTHCHECK</span> --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+<span class="k">EXPOSE</span> 8000   <span class="cmt"># ✓ documentation only — does not publish the port</span>
+
+<span class="cmt"># ✓ ENTRYPOINT = the command (protected); CMD = default args (overridable)</span>
+<span class="k">ENTRYPOINT</span> ["python", "-m", "uvicorn"]
+<span class="k">CMD</span> ["main:app", "--host", "0.0.0.0", "--port", "8000"]</pre>
+
+  <table>
+    <tr><th>Anti-Pattern</th><th>Risk</th><th>Fix</th></tr>
+    <tr><td><code class="inl">FROM ubuntu:latest</code></td><td>Non-deterministic — changes every pull</td><td><code class="inl">FROM ubuntu:22.04</code></td></tr>
+    <tr><td><code class="inl">RUN apt-get update</code> alone</td><td>Stale metadata cached; install uses old package lists</td><td>Combine: <code class="inl">RUN apt-get update &amp;&amp; apt-get install -y ... &amp;&amp; rm -rf /var/lib/apt/lists/*</code></td></tr>
+    <tr><td>No <code class="inl">.dockerignore</code></td><td><code class="inl">.git/</code>, <code class="inl">node_modules/</code>, secrets copied into image</td><td>Create <code class="inl">.dockerignore</code> matching <code class="inl">.gitignore</code></td></tr>
+    <tr><td><code class="inl">USER root</code> or no USER</td><td>Container runs as root; kernel escape = root on host</td><td>Create non-root user; <code class="inl">USER appuser</code></td></tr>
+    <tr><td><code class="inl">ENV SECRET_KEY=hardcoded</code></td><td>Secret baked into image; visible in <code class="inl">docker inspect</code></td><td>Pass at runtime via <code class="inl">-e</code> or secrets manager</td></tr>
+    <tr><td>Single-stage build with build tools</td><td>gcc, Maven, Rust toolchain in production image</td><td>Multi-stage: build in Stage 1, copy artifact to Stage 2</td></tr>
+    <tr><td><code class="inl">COPY . .</code> before <code class="inl">pip install</code></td><td>Every code change invalidates the 150MB dependency layer</td><td>COPY lockfile first, then app code</td></tr>
+  </table>
+
+  <!-- ══════ 5 · MULTI-STAGE ══════ -->
+  <h2 class="sec" id="s5">5 · Multi-Stage Builds — Ship Only the Product</h2>
+
+  <div class="box analogy"><span class="ic">🧠</span><div class="h">Mental Model — The Factory Floor vs the Product</div>
+  <p>You don't ship the factory floor to the customer — you ship the product. Multi-stage builds apply this to containers: Stage 1 is the factory (compiler, build tools, test runner). Stage 2 is the product (compiled binary or optimised artifact). Only Stage 2 reaches production. No compiler in production = 80% smaller image, no compiler in CVE scans, no development tools in the attack surface.</p></div>
+
+  <table>
+    <tr><th>Language</th><th>Single-stage size</th><th>Multi-stage size</th><th>Reduction</th></tr>
+    <tr><td>Go binary</td><td>~800 MB (Go toolchain)</td><td>5–30 MB (scratch + binary)</td><td>30–160×</td></tr>
+    <tr><td>Java Spring Boot</td><td>~800 MB (JDK + sources)</td><td>~150 MB (JRE + JAR)</td><td>5×</td></tr>
+    <tr><td>Python API</td><td>~800 MB (with gcc)</td><td>~200 MB (slim + app)</td><td>4×</td></tr>
+    <tr><td>Rust binary</td><td>~2 GB (Rust toolchain)</td><td>5–50 MB (scratch + binary)</td><td>40–400×</td></tr>
+    <tr><td>Node.js API</td><td>~1.2 GB (with devDeps)</td><td>~150 MB (prod deps only)</td><td>8×</td></tr>
+  </table>
+
+  <div class="box insight"><span class="ic">🔎</span><div class="h">Why image size matters in production economics</div>
+  <p>A team of 50 engineers pushing 20 images per day: 800 MB × 1,000 pulls/day = 800 GB/day of registry traffic. At $0.09/GB (AWS ECR egress): $72/day = $26,280/year. Optimise to 150 MB: $4,935/year. <strong>Savings: $21,345/year</strong> — just from multi-stage builds. But cost is secondary to speed: pulling a 150 MB image takes 2 seconds; pulling 800 MB takes 15 seconds. At 10 deploys/day × 100 pods per deployment, that 13-second difference matters for autoscaler response time.</p></div>
+
+  <!-- ══════ 6 · SECURITY ══════ -->
+  <h2 class="sec" id="s6">6 · Security Hardening</h2>
+
+  <div class="def how"><span class="lab">How — Defence in Depth</span>
+  <p>Container security is a layered defence. Each layer reduces the attacker's options if the application is compromised:</p>
+  <ol style="margin:4px 0; padding-left:20px;">
+    <li><strong>Non-root user</strong>: <code class="inl">USER 1001</code> — even with code execution, can't write to system directories</li>
+    <li><strong>Read-only root filesystem</strong>: <code class="inl">docker run --read-only</code> / K8s <code class="inl">readOnlyRootFilesystem: true</code> — can't install tools or modify binary</li>
+    <li><strong>Drop all capabilities</strong>: <code class="inl">--cap-drop ALL</code> — can't bind port &lt;1024, can't modify kernel params</li>
+    <li><strong>No new privileges</strong>: <code class="inl">--security-opt no-new-privileges</code> — can't escalate via setuid binaries</li>
+    <li><strong>Seccomp profile</strong>: limits which syscalls the process can make (Docker default profile blocks ~44 syscalls)</li>
+    <li><strong>Image scanning</strong>: <code class="inl">trivy image myapp:latest</code> in CI — catch CVEs before they reach production</li>
+  </ol></div>
+
+  <div class="box scenario"><span class="ic">🌍</span><div class="h">Real-World: OpenShift — Non-Root by Default Since 2014</div>
+  <p>Red Hat OpenShift has required all containers to run as non-root since its first release. Any image that requires root — including official images like <code class="inl">nginx:latest</code> — will fail to start on OpenShift. This forced the ecosystem to create hardened alternatives (<code class="inl">bitnami/nginx</code> runs as UID 1001). The result: 10 years of OpenShift usage means RedHat customers have a decade of non-root container experience that dramatically reduces their container escape attack surface. Google GKE Autopilot adopted the same policy in 2021 — the industry has converged on non-root as the default.</p></div>
+
+  <!-- ══════ 8 · CI/CD ══════ -->
+  <h2 class="sec" id="s8">8 · Docker in CI/CD</h2>
+
+  <div class="def what"><span class="lab">What — BuildKit</span><p>BuildKit is the modern Docker build engine (enabled by default since Docker 23). Key features for CI: parallel stage execution in multi-stage builds, better layer caching, cache mounts (<code class="inl">--mount=type=cache</code> for pip/npm caches that persist across builds), and build secrets (<code class="inl">--secret id=key,env=API_KEY</code> — the secret is never written to a layer).</p></div>
+
+  <pre><span class="cmt"># ✅ BuildKit in GitHub Actions: layer cache via registry</span>
+<span class="k">- uses</span>: <span class="s">docker/build-push-action@v6</span>
+  <span class="k">with</span>:
+    <span class="k">context</span>: .
+    <span class="k">push</span>: <span class="s">${{ github.event_name != 'pull_request' }}</span>
+    <span class="k">tags</span>: <span class="s">ghcr.io/${{ github.repository }}:sha-${{ github.sha }}</span>
+    <span class="cmt"># ✓ Cache layers in GitHub Actions cache (free, fast)</span>
+    <span class="k">cache-from</span>: type=gha
+    <span class="k">cache-to</span>:   type=gha,mode=max
+    <span class="cmt"># ✓ Build secret — never written to a layer</span>
+    <span class="k">secrets</span>: |
+      GIT_AUTH_TOKEN=<span class="s">${{ secrets.GIT_AUTH_TOKEN }}</span></pre>
+
+  <div class="box takeaway"><span class="ic">✅</span><div class="h">Chapter Takeaways</div>
+  <ul class="tick">
+    <li>A container is a process with namespaces + cgroups — not a VM. It shares the host kernel.</li>
+    <li>Layer order matters: most stable instruction first, most frequently changed last</li>
+    <li>Multi-stage builds are not optional for production — they reduce size, CVEs, and cost</li>
+    <li>Non-root user is non-negotiable — every production container runs as UID &gt; 0</li>
+    <li>Pin base image to a specific version SHA, not <code class="inl">latest</code></li>
+    <li>Scan images in CI with <code class="inl">trivy</code> or <code class="inl">grype</code> — catch CVEs before production</li>
+    <li>BuildKit layer caching in CI reduces Docker build time from 5 minutes to 30 seconds</li>
+  </ul></div>
+
+</section>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# CODEOWNERS — every PR touching any file requires review from the owner.
+# Syntax: <pattern> <@github-username>
+# Patterns are evaluated in order; the last match wins.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ── Global owner — all files ────────────────────────────────────────────
+*                               @karthikb35
+
+# ── CI/CD workflows — extra gate, must not be quietly changed ───────────
+.github/                        @karthikb35
+
+# ── Study-guide books (content quality gate) ────────────────────────────
+study-guide/                    @karthikb35
+
+# ── Module notebooks (curriculum quality gate) ──────────────────────────
+01-git-github-actions/          @karthikb35
+02-jenkins/                     @karthikb35
+03-docker/                      @karthikb35
+04-kubernetes/                  @karthikb35
+05-ansible/                     @karthikb35
+06-terraform/                   @karthikb35
+07-monitoring-observability/    @karthikb35

@@ -1,0 +1,214 @@
+name: DevOps Study-Guide PDFs
+
+# Builds one PDF per study-guide book from its HTML source, but only for books
+# that actually changed. Unchanged books are carried over from the previous
+# "devops-pdfs" rolling release — so a one-line edit to Book 3 does not
+# re-render the other six.
+#
+# Change detection:
+#   * that book's own HTML changed             → rebuild it
+#   * shared CSS / renderer / this workflow    → rebuild ALL books
+#   * otherwise                                → reuse PDF from last release
+#
+# The publish job then republishes the full set (fresh + carried-over) so
+# the rolling release always holds every current book.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "study-guide/**"
+      - ".github/workflows/docs-pdf.yml"
+  pull_request:
+    paths:
+      - "study-guide/**"
+      - ".github/workflows/docs-pdf.yml"
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: "Rebuild every book PDF regardless of changes"
+        type: boolean
+        default: false
+
+concurrency:
+  group: devops-pdf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # 1. Detect which books changed
+  # ─────────────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changed books
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.filter.outputs.changes }}
+      shared:  ${{ steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - 'study-guide/devops-path.css'
+              - 'study-guide/render_pdf.py'
+              - '.github/workflows/docs-pdf.yml'
+            b1:
+              - 'study-guide/book-1-git-github-actions.html'
+            b2:
+              - 'study-guide/book-2-jenkins.html'
+            b3:
+              - 'study-guide/book-3-docker.html'
+            b4:
+              - 'study-guide/book-4-kubernetes.html'
+            b5:
+              - 'study-guide/book-5-ansible.html'
+            b6:
+              - 'study-guide/book-6-terraform.html'
+            b7:
+              - 'study-guide/book-7-monitoring-observability.html'
+            b8:
+              - 'study-guide/book-8-branch-protection-ci-checks.html'
+            master:
+              - 'study-guide/The-DevOps-Path.html'
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2. One job per book — each decides build-vs-reuse independently
+  # ─────────────────────────────────────────────────────────────────────────
+  pdf:
+    name: ${{ matrix.pdf }}
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: b1
+            html: book-1-git-github-actions.html
+            pdf:  Book-1-Git-and-GitHub-Actions.pdf
+          - key: b2
+            html: book-2-jenkins.html
+            pdf:  Book-2-Jenkins.pdf
+          - key: b3
+            html: book-3-docker.html
+            pdf:  Book-3-Docker.pdf
+          - key: b4
+            html: book-4-kubernetes.html
+            pdf:  Book-4-Kubernetes.pdf
+          - key: b5
+            html: book-5-ansible.html
+            pdf:  Book-5-Ansible.pdf
+          - key: b6
+            html: book-6-terraform.html
+            pdf:  Book-6-Terraform.pdf
+          - key: b7
+            html: book-7-monitoring-observability.html
+            pdf:  Book-7-Monitoring-and-Observability.pdf
+          - key: b8
+            html: book-8-branch-protection-ci-checks.html
+            pdf:  Book-8-Branch-Protection-and-CI-Checks.pdf
+          - key: master
+            html: The-DevOps-Path.html
+            pdf:  The-DevOps-Path.pdf
+    env:
+      REBUILD: >-
+        ${{ github.event.inputs.force_all == 'true'
+            || needs.changes.outputs.shared == 'true'
+            || contains(fromJSON(needs.changes.outputs.changed), matrix.key) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Plan (build vs reuse)
+        id: plan
+        run: echo "mode=${{ env.REBUILD == 'true' && 'build' || 'reuse' }}" >> "$GITHUB_OUTPUT"
+
+      # ── Reuse: pull existing PDF from the rolling release ──────────────────
+      - name: Reuse PDF from previous release
+        if: steps.plan.outputs.mode == 'reuse'
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out
+          if gh release download devops-pdfs \
+               --pattern "${{ matrix.pdf }}" --dir out --clobber 2>/dev/null; then
+            echo "ok=true"  >> "$GITHUB_OUTPUT"
+            echo "Reused ${{ matrix.pdf }} from release devops-pdfs."
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "No prior asset for ${{ matrix.pdf }} — will build instead."
+          fi
+
+      # ── Build: render with headless Chromium ───────────────────────────────
+      - name: Set up Python
+        if: steps.plan.outputs.mode == 'build' || steps.reuse.outputs.ok == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install renderer (Playwright + Chromium + emoji fonts)
+        if: steps.plan.outputs.mode == 'build' || steps.reuse.outputs.ok == 'false'
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            fonts-noto-color-emoji fonts-liberation
+
+      - name: Render PDF
+        if: steps.plan.outputs.mode == 'build' || steps.reuse.outputs.ok == 'false'
+        run: |
+          mkdir -p out
+          python study-guide/render_pdf.py \
+            "study-guide/${{ matrix.html }}" "out/${{ matrix.pdf }}"
+
+      # ── Upload for the publish job ──────────────────────────────────────────
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-${{ matrix.key }}
+          path: out/${{ matrix.pdf }}
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 3. Publish the full set to the rolling release (push to main only)
+  #    PRs leave PDFs as run artifacts only.
+  # ─────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish rolling release
+    needs: pdf
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pdf-*
+          path: pdfs
+          merge-multiple: true
+
+      - name: Publish / refresh devops-pdfs release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: devops-pdfs
+          name: DevOps Study-Guide PDFs (latest)
+          body: |
+            Auto-generated book PDFs for **The DevOps Architect's Path**.
+
+            Each run rebuilds only the books whose HTML (or the shared CSS) changed;
+            every other book is carried over from this release's previous revision.
+
+            | Book | Topic |
+            |---|---|
+            | Book 1 | Git & GitHub Actions |
+            | Book 2 | Jenkins |
+            | Book 3 | Docker |
+            | Book 4 | Kubernetes |
+            | Book 5 | Ansible |
+            | Book 6 | Terraform |
+            | Book 7 | Monitoring & Observability |
+            | Master | The DevOps Path (all topics) |
+          files: pdfs/*.pdf
