@@ -1,5 +1,8 @@
-# Ruff — fast Python linter and formatter
+﻿# Ruff — fast Python linter and formatter
 # Replaces: flake8, pycodestyle, pydocstyle, pyupgrade, isort (via [lint.isort])
+
+# Notebooks contain teaching code — skip linting them; only lint .py files.
+extend-exclude = ["**/*.ipynb"]
 
 [lint]
 select = [
@@ -18,20 +21,16 @@ select = [
 ]
 
 ignore = [
-    "S101",   # allow assert (used in notebook demos)
-    "T201",   # allow print() in notebooks / demo scripts
-    "E501",   # line length managed by formatter, not linter
+    "S101",   # allow assert (used in tests)
+    "T201",   # allow print() in scripts / demos
+    "E501",   # line length managed by formatter
     "S603",   # subprocess without shell=True is fine
     "S607",   # partial executable paths acceptable in scripts
 ]
 
 [lint.per-file-ignores]
-# Test files: allow bare assert and magic values
-"tests/**" = ["S101", "PLR2004"]
-# Study-guide helper scripts: allow subprocess
+"tests/**"                  = ["S101", "PLR2004"]
 "study-guide/render_pdf.py" = ["S603", "S607"]
-# Notebook companion scripts: allow print
-"**/examples/**" = ["T201"]
 
 [lint.isort]
 known-first-party = ["devops_utils"]
@@ -41,7 +40,7 @@ split-on-trailing-comma = true
 [format]
 quote-style = "double"
 indent-style = "space"
-magic-trailing-comma = true
+skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = true
 docstring-code-line-length = 88

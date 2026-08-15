@@ -21,8 +21,8 @@ from the previous rolling release.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
+import sys
 
 
 def render(html_path: str, pdf_path: str) -> None:
@@ -43,8 +43,8 @@ def render(html_path: str, pdf_path: str) -> None:
         page.goto(src.as_uri(), wait_until="networkidle")
         page.pdf(
             path=str(out),
-            prefer_css_page_size=True,   # honour @page { size: A4 }
-            print_background=True,       # keep dark cover gradients and coloured boxes
+            prefer_css_page_size=True,  # honour @page { size: A4 }
+            print_background=True,  # keep dark cover gradients and coloured boxes
         )
         browser.close()
     print(f"wrote {pdf_path}")
@@ -55,7 +55,9 @@ def render_all(study_guide_dir: str = "study-guide", out_dir: str = "out") -> No
     books = sorted(Path(study_guide_dir).glob("book-*.html"))
     books += sorted(Path(study_guide_dir).glob("The-DevOps-Path.html"))
     for html in books:
-        pdf_name = html.stem.replace("book-", "Book-").replace("-", "-").title() + ".pdf"
+        pdf_name = (
+            html.stem.replace("book-", "Book-").replace("-", "-").title() + ".pdf"
+        )
         render(str(html), str(Path(out_dir) / pdf_name))
 
 
@@ -65,7 +67,10 @@ def main(argv: list[str]) -> int:
         return 0
     if len(argv) != 3:
         print("usage: render_pdf.py <input.html> <output.pdf>", file=sys.stderr)
-        print("       render_pdf.py --all                     (render all books)", file=sys.stderr)
+        print(
+            "       render_pdf.py --all                     (render all books)",
+            file=sys.stderr,
+        )
         return 2
     render(argv[1], argv[2])
     return 0

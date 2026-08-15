@@ -105,11 +105,11 @@ jobs:
       - name: Install uv and sync dev dependencies
         run: |
           pip install uv
-          uv sync --dev
-        # uv reads pyproject.toml [tool.uv] dev-dependencies
+          uv pip install --system pytest pytest-cov pyyaml
+        # installs test deps into the system Python; no lockfile needed
 
       - name: pytest — structural protection tests
-        run: uv run pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short
 
       - name: Upload coverage (optional, non-blocking)
         if: always()
@@ -132,8 +132,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install yamllint via uv
-        run: pip install uv && uvx --from yamllint yamllint --version || pip install yamllint
+      - name: Install yamllint
+        run: pip install yamllint
 
       - name: yamllint .github/workflows/
         run: |
@@ -161,7 +161,7 @@ jobs:
           fetch-depth: 0  # scan full history, not just HEAD
 
       - name: Scan for secrets (trufflesecurity/trufflehog)
-        uses: trufflesecurity/trufflehog@v3.82.6
+        uses: trufflesecurity/trufflehog@v3.88.1
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
